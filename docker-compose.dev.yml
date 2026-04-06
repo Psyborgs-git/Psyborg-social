@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  api:
+    command: uvicorn socialmind.api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./socialmind:/app/socialmind
+      - ./alembic.ini:/app/alembic.ini
+      - ./migrations:/app/migrations
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+
+  mcp:
+    command: uvicorn socialmind.mcp.app:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - ./socialmind:/app/socialmind
+    environment:
+      DEBUG: "true"
+      MCP_REQUIRE_AUTH: "false"
+
+  worker:
+    command: >
+      celery -A socialmind.scheduler.celery_app worker
+      --loglevel=debug
+      --concurrency=2
+      --queues=high,normal,low
+    volumes:
+      - ./socialmind:/app/socialmind
+    environment:
+      DEBUG: "true"
