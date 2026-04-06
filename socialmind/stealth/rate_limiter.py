@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 if TYPE_CHECKING:
     import redis.asyncio as redis
 
@@ -145,16 +147,12 @@ def rate_limited(platform: str, action: str):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(self, *args, **kwargs):
-            from socialmind.stealth.rate_limiter import AccountRateLimiter
-
             limiter: AccountRateLimiter | None = getattr(self, "_rate_limiter", None)
             if limiter is not None:
                 allowed = await limiter.check_and_increment(
                     self.account.id, platform, action
                 )
                 if not allowed:
-                    from loguru import logger
-
                     logger.warning(
                         "Rate limit hit for account=%s platform=%s action=%s",
                         self.account.id,

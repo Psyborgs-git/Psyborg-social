@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -221,13 +222,16 @@ class InstagramAdapter(BasePlatformAdapter):
 
     def _create_text_image(self, text: str) -> str:
         """Create a simple image with the given text for text-only posts."""
-        try:
-            from PIL import Image, ImageDraw, ImageFont
+        import os
 
+        try:
+            from PIL import Image, ImageDraw
+
+            os.makedirs("media_tmp", exist_ok=True)
             img = Image.new("RGB", (1080, 1080), color=(255, 255, 255))
             draw = ImageDraw.Draw(img)
             draw.text((40, 400), text[:500], fill=(0, 0, 0))
-            path = f"text_post_{abs(hash(text))}.jpg"
+            path = os.path.join("media_tmp", f"text_post_{abs(hash(text))}.jpg")
             img.save(path)
             return path
         except ImportError:
@@ -326,9 +330,9 @@ class InstagramAdapter(BasePlatformAdapter):
                         media_urls=[],
                         likes_count=mi.get("like_count", 0),
                         comments_count=mi.get("comment_count", 0),
-                        posted_at=__import__("datetime").datetime.fromtimestamp(
+                        posted_at=datetime.fromtimestamp(
                             mi.get("taken_at", 0),
-                            tz=__import__("datetime").timezone.utc,
+                            tz=timezone.utc,
                         ),
                         raw=mi,
                     )

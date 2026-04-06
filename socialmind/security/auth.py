@@ -60,16 +60,18 @@ try:
 
     async def get_current_user(
         token: str = Depends(oauth2_scheme),
-    ) -> "User":  # noqa: F821
-        """FastAPI dependency that validates the Bearer token and returns the user."""
-        from socialmind.models.user import User
+    ) -> str:
+        """
+        FastAPI dependency that validates the Bearer token and returns the user ID.
 
+        Callers that need the full User object should inject a DB session and
+        load the User with ``await db.get(User, user_id)``.
+        """
         payload = decode_token(token)
         user_id: str | None = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Authentication required")
-        # Caller is responsible for providing a DB session; this stub shows the pattern.
-        return user_id  # type: ignore[return-value]
+        return user_id
 
 except ImportError:
     # FastAPI not installed — skip dependency definition

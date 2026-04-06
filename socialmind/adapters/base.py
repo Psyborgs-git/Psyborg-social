@@ -175,17 +175,16 @@ class BasePlatformAdapter(ABC):
         """
         Download a media file from a URL (or MinIO key) and return its local path.
 
-        This is a simple implementation — production code should integrate with
-        the MinIO client and content pipeline.
+        Files are written to a `media_tmp/` subdirectory relative to the working
+        directory. Callers are responsible for cleaning up files after use.
         """
         import os
-        import tempfile
 
         import httpx
 
+        os.makedirs("media_tmp", exist_ok=True)
         suffix = os.path.splitext(url.split("?")[0])[-1] or ".bin"
-        # Write to a temp file in the project working directory area
-        dest = f"media_tmp_{os.getpid()}_{abs(hash(url))}{suffix}"
+        dest = os.path.join("media_tmp", f"{abs(hash(url))}{suffix}")
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream("GET", url) as resp:
                 resp.raise_for_status()

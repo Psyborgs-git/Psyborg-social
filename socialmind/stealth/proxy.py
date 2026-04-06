@@ -46,11 +46,11 @@ class ProxyPoolManager:
         platform_slug = account.platform.slug if account.platform else ""
         mobile_preferred = platform_slug in ("instagram", "tiktok", "threads")
 
-        query = select(Proxy).where(Proxy.is_healthy == True).order_by(Proxy.failure_count.asc())  # noqa: E712
+        query = select(Proxy).where(Proxy.is_healthy.is_(True)).order_by(Proxy.failure_count.asc())
         if mobile_preferred:
             from sqlalchemy import case
 
-            query = select(Proxy).where(Proxy.is_healthy == True).order_by(  # noqa: E712
+            query = select(Proxy).where(Proxy.is_healthy.is_(True)).order_by(
                 case((Proxy.provider == "mobile", 0), else_=1),
                 Proxy.failure_count.asc(),
             )

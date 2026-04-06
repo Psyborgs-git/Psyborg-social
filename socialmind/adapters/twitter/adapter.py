@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from loguru import logger
 
 from socialmind.adapters.base import (
@@ -213,7 +214,7 @@ class TwitterAdapter(BasePlatformAdapter):
                         media_urls=[],
                         likes_count=metrics.get("like_count", 0),
                         comments_count=metrics.get("reply_count", 0),
-                        posted_at=tweet.created_at or __import__("datetime").datetime.now(timezone.utc),
+                        posted_at=tweet.created_at or datetime.now(timezone.utc),
                         raw={"metrics": metrics},
                     )
                 )
