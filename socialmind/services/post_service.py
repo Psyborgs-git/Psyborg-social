@@ -9,12 +9,10 @@ from socialmind.repositories.task_repository import TaskRepository
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from socialmind.models.media import PostRecord
-
 
 @dataclass
-class PostRecord:
-    """Lightweight view model returned by PostService."""
+class PostRecordDTO:
+    """Lightweight DTO returned by PostService (wraps the PostRecord DB model)."""
 
     task_id: str
     account_id: str
@@ -69,7 +67,7 @@ class PostService:
 
     async def get_recent_posts(
         self, account_id: str, limit: int = 10
-    ) -> list[PostRecord]:
+    ) -> list[PostRecordDTO]:
         """Return recent successfully-published posts for an account."""
         from sqlalchemy import select
 
@@ -83,7 +81,7 @@ class PostService:
         )
         rows = result.scalars().all()
         return [
-            PostRecord(
+            PostRecordDTO(
                 task_id=r.task_id,
                 account_id=r.account_id,
                 platform_post_id=r.platform_post_id,

@@ -23,10 +23,12 @@ CELERY_BEAT_SCHEDULE: dict[str, dict] = {
         "task": "socialmind.scheduler.tasks.collect_analytics",
         "schedule": crontab(hour="*/4", minute=15),
     },
-    "run-warmup-accounts": {
+    # DM check — every 15 minutes for all active accounts
+    "check-dms-all-accounts": {
         "task": "socialmind.scheduler.tasks.dispatch_campaign_tasks",
-        "schedule": crontab(hour=10, minute=0),
+        "schedule": crontab(minute="*/15"),
     },
+    # Campaign dispatch — every minute
     "dispatch-campaign-tasks": {
         "task": "socialmind.scheduler.tasks.dispatch_campaign_tasks",
         "schedule": crontab(minute="*/1"),

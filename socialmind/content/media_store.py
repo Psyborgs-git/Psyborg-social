@@ -50,9 +50,12 @@ class MediaStore:
         os.makedirs(_MEDIA_TMP, exist_ok=True)
         dest = os.path.join(_MEDIA_TMP, f"{uuid4()}{suffix}")
         response = await self._client.get_object(bucket, key)
-        async with aiofiles.open(dest, "wb") as f:
-            async for chunk in response.content.iter_chunked(8192):
-                await f.write(chunk)
+        try:
+            async with aiofiles.open(dest, "wb") as f:
+                async for chunk in response.content.iter_chunked(8192):
+                    await f.write(chunk)
+        finally:
+            response.release()
         return dest
 
     async def get_public_url(self, minio_url: str, expires: int = 3600) -> str:

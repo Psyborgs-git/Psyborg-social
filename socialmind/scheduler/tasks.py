@@ -262,7 +262,6 @@ def engage_feed(self: Any, task_id: str) -> dict[str, Any]:
 
 
 async def _engage_feed_async(celery_self: Any, task_id: str) -> dict[str, Any]:
-    import asyncio as _asyncio
     import random
 
     from socialmind.ai.modules.content import FeedEngager
@@ -315,14 +314,14 @@ async def _engage_feed_async(celery_self: Any, task_id: str) -> dict[str, Any]:
                     if "like" in actions and plan.should_like:
                         await adapter.like(item.platform_id)
                         actions_taken += 1
-                        await _asyncio.sleep(random.uniform(2, 8))
+                        await asyncio.sleep(random.uniform(2, 8))
 
                     if "comment" in actions and plan.should_comment and plan.comment_text:
                         await adapter.comment(item.platform_id, plan.comment_text)
                         actions_taken += 1
-                        await _asyncio.sleep(random.uniform(10, 30))
+                        await asyncio.sleep(random.uniform(10, 30))
 
-                await _asyncio.sleep(random.uniform(30, 90))
+                await asyncio.sleep(random.uniform(30, 90))
 
             task.status = TaskStatus.SUCCESS
             await _log(db, task, "INFO", f"Took {actions_taken} feed actions")
@@ -457,14 +456,12 @@ _WARMUP_SCHEDULE: dict[int, dict[str, int]] = {
     **{d: {"likes": d * 2, "follows": d} for d in range(1, 8)},      # week 1
     **{d: {"likes": 15, "follows": 8} for d in range(8, 15)},         # week 2
     **{d: {"likes": 25, "follows": 12} for d in range(15, 22)},        # week 3
-    **{d: {"likes": 35, "follows": 15} for d in range(22, 31)},        # week 4
+    **{d: {"likes": 35, "follows": 15} for d in range(22, 30)},        # week 4
     30: {"likes": 40, "follows": 20},
 }
 
 
 async def _run_warmup_async(celery_self: Any, account_id: str) -> dict[str, Any]:
-    import asyncio as _asyncio
-
     from socialmind.stealth.timing import TimingEngine
 
     redis_client = get_redis()
@@ -488,7 +485,7 @@ async def _run_warmup_async(celery_self: Any, account_id: str) -> dict[str, Any]
             for item in feed[: schedule["likes"]]:
                 await adapter.like(item.platform_id)
                 await TimingEngine.delay("like")
-                await _asyncio.sleep(0)
+                await asyncio.sleep(0)
 
             account.warmup_day += 1
             if account.warmup_day >= 30:
