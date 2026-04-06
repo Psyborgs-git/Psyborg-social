@@ -1,0 +1,161 @@
+version: "3.9"
+
+x-api-common: &api-common
+  build:
+    context: .
+    dockerfile: docker/api.Dockerfile
+  environment:
+    DATABASE_URL: postgresql+asyncpg://socialmind:${POSTGRES_PASSWORD:-socialmind}@postgres:5432/socialmind
+    REDIS_URL: redis://redis:6379/0
+    MINIO_ENDPOINT: minio:9000
+    MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-socialmind}
+    MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-socialmind}
+    OLLAMA_URL: http://ollama:11434
+    SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+    ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+    LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+    OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    IMAGE_PROVIDER: ${IMAGE_PROVIDER:-dalle}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    MCP_API_KEY: ${MCP_API_KEY:-change-me}
+    CHROMADB_URL: http://chromadb:8002
+    DEBUG: ${DEBUG:-false}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  volumes:
+    - playwright_data:/ms-playwright
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: socialmind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-socialmind}
+      POSTGRES_DB: socialmind
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U socialmind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-socialmind}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-socialmind}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - chromadb_data:/chroma/chroma
+    ports:
+      - "8002:8000"
+    restart: unless-stopped
+
+  api:
+    <<: *api-common
+    command: uvicorn socialmind.api.main:app --host 0.0.0.0 --port 8000 --workers 2
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp:
+    <<: *api-common
+    command: uvicorn socialmind.mcp.app:app --host 0.0.0.0 --port 8001 --workers 1
+    ports:
+      - "8001:8001"
+    depends_on:
+      api:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *api-common
+    command: >
+      celery -A socialmind.scheduler.celery_app worker
+      --loglevel=info
+      --concurrency=4
+      --queues=high,normal,low
+      --hostname=worker@%h
+
+  beat:
+    <<: *api-common
+    command: >
+      celery -A socialmind.scheduler.celery_app beat
+      --loglevel=info
+      --scheduler=celery.beat:PersistentScheduler
+      --schedule=/data/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/data
+
+  flower:
+    <<: *api-common
+    command: >
+      celery -A socialmind.scheduler.celery_app flower
+      --port=5555
+      --basic_auth=admin:${FLOWER_PASSWORD:-flower}
+    ports:
+      - "5555:5555"
+
+  ui:
+    build:
+      context: .
+      dockerfile: docker/ui.Dockerfile
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+      - mcp
+      - ui
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  chromadb_data:
+  playwright_data:
+  celery_beat_data:

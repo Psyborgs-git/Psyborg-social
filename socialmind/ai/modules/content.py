@@ -191,4 +191,7 @@ __all__ = [
     "DMResponder",
     "FeedEngager",
     "TrendResearcher",
+    "ContentGenerator",
 ]
+
+ContentGenerator = PostGenerator  # alias for backward compatibility
