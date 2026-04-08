@@ -82,4 +82,4 @@ def test_tiktok_headers_are_valid(adapter):
     headers = adapter._get_tiktok_headers()
     assert "User-Agent" in headers
     assert "Referer" in headers
-    assert "tiktok.com" in headers["Referer"]
+    assert headers["Referer"] == "https://www.tiktok.com/"

@@ -31,7 +31,7 @@ async def run_post_workflow(account_id: str, content_config: dict[str, Any]) -> 
 
         task = Task(
             account_id=account.id,
-            task_type=content_config.get("task_type", TaskType.POST),
+            task_type=TaskType(content_config.get("task_type", TaskType.POST)),
             status=TaskStatus.QUEUED,
             config=content_config,
             scheduled_at=datetime.now(UTC),
