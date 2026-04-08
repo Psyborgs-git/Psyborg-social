@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import httpx
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def _today() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
 class ProxyPoolManager:
@@ -23,11 +23,11 @@ class ProxyPoolManager:
     automatic rotation on failure.
     """
 
-    def __init__(self, redis_client: "redis.Redis", db_session: "AsyncSession") -> None:
+    def __init__(self, redis_client: redis.Redis, db_session: AsyncSession) -> None:
         self._redis = redis_client
         self._db = db_session
 
-    async def get_proxy_for_account(self, account: "Account") -> "Proxy | None":
+    async def get_proxy_for_account(self, account: Account) -> Proxy | None:
         """Return the sticky proxy for this account, or assign a new one."""
         from socialmind.models.proxy import Proxy
 
@@ -37,7 +37,7 @@ class ProxyPoolManager:
                 return proxy
         return await self._assign_best_proxy(account)
 
-    async def _assign_best_proxy(self, account: "Account") -> "Proxy | None":
+    async def _assign_best_proxy(self, account: Account) -> Proxy | None:
         """Pick the best available proxy for this account."""
         from sqlalchemy import select
 
@@ -98,12 +98,12 @@ class ProxyPoolManager:
         for proxy in result.scalars():
             is_ok = await self._check_proxy_health(proxy)
             proxy.is_healthy = is_ok
-            proxy.last_checked_at = datetime.now(timezone.utc)
+            proxy.last_checked_at = datetime.now(UTC)
             if is_ok:
                 proxy.failure_count = 0
         await self._db.commit()
 
-    async def _check_proxy_health(self, proxy: "Proxy") -> bool:
+    async def _check_proxy_health(self, proxy: Proxy) -> bool:
         """Verify a proxy is reachable by hitting an external IP echo endpoint."""
         try:
             async with httpx.AsyncClient(

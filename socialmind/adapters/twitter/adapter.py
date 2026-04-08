@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import quote_plus
 
 from loguru import logger
@@ -154,7 +154,7 @@ class TwitterAdapter(BasePlatformAdapter):
             self.session.cookies = state.get("cookies", [])
             self.session.local_storage = state.get("origins", [])
             self.session.is_valid = True
-            self.account.last_active_at = datetime.now(timezone.utc)
+            self.account.last_active_at = datetime.now(UTC)
             self.last_error = None
             return True
         except Exception as exc:
@@ -179,7 +179,6 @@ class TwitterAdapter(BasePlatformAdapter):
 
         text = content.text[:280]
         try:
-            import tweepy  # type: ignore[import-untyped]
 
             response = await self._client.create_tweet(text=text)
             tweet_id = response.data["id"]
@@ -298,7 +297,6 @@ class TwitterAdapter(BasePlatformAdapter):
         if self._client is None:
             return []
         try:
-            from datetime import timezone
 
             response = await self._client.get_home_timeline(
                 max_results=min(limit, 100),
@@ -322,7 +320,7 @@ class TwitterAdapter(BasePlatformAdapter):
                         media_urls=[],
                         likes_count=metrics.get("like_count", 0),
                         comments_count=metrics.get("reply_count", 0),
-                        posted_at=tweet.created_at or datetime.now(timezone.utc),
+                        posted_at=tweet.created_at or datetime.now(UTC),
                         raw={"metrics": metrics},
                     )
                 )

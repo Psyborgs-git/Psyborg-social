@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from socialmind.api.dependencies import (
-    get_current_user,
     get_campaign_service,
+    get_current_user,
 )
 from socialmind.models.user import User
 from socialmind.services.campaign_service import CampaignService

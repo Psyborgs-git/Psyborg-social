@@ -42,8 +42,9 @@ TOOLS: list[Tool] = [
 
 
 async def handle(name: str, arguments: dict) -> dict | list:
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
     from socialmind.config.settings import settings
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
     from socialmind.services.campaign_service import CampaignService
 
     engine = create_async_engine(settings.DATABASE_URL)

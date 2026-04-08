@@ -25,8 +25,9 @@ TOOLS: list[Tool] = [
 
 
 async def handle(name: str, arguments: dict) -> dict | list:
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
     from socialmind.config.settings import settings
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
     engine = create_async_engine(settings.DATABASE_URL)
     factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -42,8 +43,8 @@ async def handle(name: str, arguments: dict) -> dict | list:
                 repo = TaskRepository(session)
                 logs = await repo.get_logs(arguments["task_id"])
                 return [
-                    {"id": l.id, "level": l.level, "message": l.message, "timestamp": str(l.timestamp)}
-                    for l in logs
+                    {"id": log.id, "level": log.level, "message": log.message, "timestamp": str(log.timestamp)}
+                    for log in logs
                 ]
             raise ValueError(f"Unknown tool: {name}")
     finally:

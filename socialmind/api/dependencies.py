@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Annotated, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Annotated
 
 import redis.asyncio as redis
 from fastapi import Depends, HTTPException
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from socialmind.config.settings import settings
 from socialmind.models.user import User
-from socialmind.security.auth import decode_token, AuthenticationError
+from socialmind.security.auth import AuthenticationError, decode_token
 from socialmind.services.account_service import AccountService
 from socialmind.services.campaign_service import CampaignService
 from socialmind.services.post_service import PostService

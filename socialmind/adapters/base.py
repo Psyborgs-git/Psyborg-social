@@ -87,9 +87,9 @@ class BasePlatformAdapter(ABC):
 
     def __init__(
         self,
-        account: "Account",
-        session: "AccountSession",
-        proxy: "Proxy | None",
+        account: Account,
+        session: AccountSession,
+        proxy: Proxy | None,
     ) -> None:
         self.account = account
         self.session = session

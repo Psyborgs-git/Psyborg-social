@@ -33,7 +33,7 @@ class Proxy(Base, TimestampMixin):
     country_code: Mapped[str | None] = mapped_column(String(8))
     provider: Mapped[str | None] = mapped_column(String(64))
 
-    accounts: Mapped[list["Account"]] = relationship(back_populates="proxy")  # noqa: F821
+    accounts: Mapped[list[Account]] = relationship(back_populates="proxy")  # noqa: F821
 
     def as_url(self) -> str:
         """Return proxy URL string for use in HTTP clients."""

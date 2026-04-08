@@ -39,7 +39,7 @@ class SessionState:
         return payload
 
     @classmethod
-    def from_payload(cls, payload: dict[str, Any]) -> "SessionState":
+    def from_payload(cls, payload: dict[str, Any]) -> SessionState:
         return cls(
             cookies=list(payload.get("cookies") or []),
             local_storage=list(payload.get("local_storage") or []),
@@ -50,7 +50,7 @@ class SessionState:
         )
 
     @classmethod
-    def from_account_session(cls, account_session) -> "SessionState":
+    def from_account_session(cls, account_session) -> SessionState:
         return cls(
             cookies=list(account_session.cookies or []),
             local_storage=list(account_session.local_storage or []),

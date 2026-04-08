@@ -94,11 +94,12 @@ TOOLS: list[Tool] = [
 
 
 async def handle(name: str, arguments: dict) -> dict | list:
-    from socialmind.config.settings import settings
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
     from socialmind.adapters.registry import get_adapter
-    from socialmind.session import RedisSessionManager
+    from socialmind.config.settings import settings
     from socialmind.services.account_service import AccountService
+    from socialmind.session import RedisSessionManager
 
     engine = create_async_engine(settings.DATABASE_URL)
     factory = async_sessionmaker(engine, expire_on_commit=False)

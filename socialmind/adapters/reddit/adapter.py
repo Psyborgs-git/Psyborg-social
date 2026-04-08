@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from loguru import logger
 
@@ -175,7 +175,7 @@ class RedditAdapter(BasePlatformAdapter):
                         likes_count=post.score,
                         comments_count=post.num_comments,
                         posted_at=datetime.fromtimestamp(
-                            post.created_utc, tz=timezone.utc
+                            post.created_utc, tz=UTC
                         ),
                         raw={"selftext": post.selftext, "subreddit": str(post.subreddit)},
                     )
@@ -200,7 +200,7 @@ class RedditAdapter(BasePlatformAdapter):
                         sender_platform_id=str(msg.author) if msg.author else "",
                         text=msg.body,
                         received_at=datetime.fromtimestamp(
-                            msg.created_utc, tz=timezone.utc
+                            msg.created_utc, tz=UTC
                         ),
                         thread_id=msg.id,
                         is_read=not msg.new,
@@ -224,7 +224,7 @@ class RedditAdapter(BasePlatformAdapter):
                     sender_username=str(msg.author) if msg.author else "[deleted]",
                     sender_platform_id=str(msg.author) if msg.author else "",
                     text=msg.body,
-                    received_at=datetime.fromtimestamp(msg.created_utc, tz=timezone.utc),
+                    received_at=datetime.fromtimestamp(msg.created_utc, tz=UTC),
                     thread_id=thread_id,
                     is_read=not msg.new,
                 )

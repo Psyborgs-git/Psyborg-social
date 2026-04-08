@@ -38,8 +38,9 @@ async def handle(name: str, arguments: dict) -> dict:
         return {"success": False, "message": "Delete not implemented via API"}
 
     if name == "create_post":
+        from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
         from socialmind.config.settings import settings
-        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
         from socialmind.services.post_service import PostService
 
         engine = create_async_engine(settings.DATABASE_URL)
