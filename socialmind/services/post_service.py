@@ -8,6 +8,7 @@ from socialmind.repositories.task_repository import TaskRepository
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
     from socialmind.models.task import Task
 
 
@@ -37,7 +38,7 @@ class PostService:
         post_type: str = "feed",
         include_image: bool = True,
         schedule_at: str | None = None,
-    ) -> "Task":
+    ) -> Task:
         """Create a scheduled post task and enqueue it in Celery."""
         from datetime import UTC, datetime
 

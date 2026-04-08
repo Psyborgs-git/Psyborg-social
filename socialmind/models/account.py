@@ -2,11 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from socialmind.models.base import Base, TimestampMixin, uuid_pk
+
+if TYPE_CHECKING:
+    from socialmind.models.persona import Persona
+    from socialmind.models.platform import Platform
+    from socialmind.models.proxy import Proxy
+    from socialmind.models.task import Task
 
 
 class AccountStatus(StrEnum):
@@ -51,17 +58,17 @@ class Account(Base, TimestampMixin):
     proxy_id: Mapped[str | None] = mapped_column(ForeignKey("proxies.id"))
 
     # Relationships
-    platform: Mapped["Platform"] = relationship(back_populates="accounts")  # noqa: F821
-    persona: Mapped["Persona | None"] = relationship(
+    platform: Mapped[Platform] = relationship(back_populates="accounts")
+    persona: Mapped[Persona | None] = relationship(
         back_populates="accounts"
-    )  # noqa: F821
-    proxy: Mapped["Proxy | None"] = relationship(
+    )
+    proxy: Mapped[Proxy | None] = relationship(
         back_populates="accounts"
-    )  # noqa: F821
-    sessions: Mapped[list["AccountSession"]] = relationship(  # noqa: F821
+    )
+    sessions: Mapped[list[AccountSession]] = relationship(  # noqa: F821
         back_populates="account", cascade="all, delete"
     )
-    tasks: Mapped[list["Task"]] = relationship(  # noqa: F821
+    tasks: Mapped[list[Task]] = relationship(  # noqa: F821
         back_populates="account", cascade="all, delete"
     )
 
@@ -100,7 +107,7 @@ class AccountSession(Base, TimestampMixin):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invalidation_reason: Mapped[str | None] = mapped_column(String(256))
 
-    account: Mapped["Account"] = relationship(back_populates="sessions")
+    account: Mapped[Account] = relationship(back_populates="sessions")
 
     @property
     def api_tokens(self) -> dict | None:

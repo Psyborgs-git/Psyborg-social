@@ -1,19 +1,21 @@
 from __future__ import annotations
+
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from socialmind.api.routers import (
     accounts,
-    tasks,
-    campaigns,
     analytics,
     auth,
-    websocket,
-    personas,
+    campaigns,
     media,
+    personas,
+    tasks,
     user,
+    websocket,
 )
-from socialmind.config.settings import settings
 from socialmind.config.logging import configure_logging
 from socialmind.mcp.middleware import MCPAuthMiddleware
 from socialmind.mcp.server import create_mcp_app

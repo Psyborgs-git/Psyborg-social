@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from loguru import logger
 
@@ -201,7 +201,7 @@ class ThreadsAdapter(BasePlatformAdapter):
                         likes_count=mi.get("like_count", 0),
                         comments_count=mi.get("comment_count", 0),
                         posted_at=datetime.fromtimestamp(
-                            mi.get("taken_at", 0), tz=timezone.utc
+                            mi.get("taken_at", 0), tz=UTC
                         ),
                         raw=mi,
                     )

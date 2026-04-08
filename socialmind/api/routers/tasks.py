@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from socialmind.api.dependencies import (
     get_current_user,
-    get_post_service,
     get_db,
+    get_post_service,
 )
 from socialmind.models.task import Task, TaskStatus
 from socialmind.models.user import User
@@ -62,6 +62,7 @@ async def list_tasks(
         tasks = await repo.get_for_account(account_id, limit=limit)
     else:
         from sqlalchemy import select
+
         from socialmind.models.task import Task as TaskModel
 
         stmt = select(TaskModel).limit(limit).offset(offset)

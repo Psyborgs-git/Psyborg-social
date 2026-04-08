@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,7 +11,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     ENCRYPTION_KEY: str = ""
-    ENCRYPTION_KEY_OLD: Optional[str] = None
+    ENCRYPTION_KEY_OLD: str | None = None
     MCP_API_KEY: str = "dev-mcp-key"
     MCP_REQUIRE_AUTH: bool = True
 
@@ -41,12 +38,12 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "llama3.2"
     OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
     EMBED_PROVIDER: str = "ollama"
-    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4o-mini"
-    ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str = "claude-3-haiku-20240307"
-    LITELLM_MODEL: Optional[str] = None
-    LITELLM_BASE_URL: Optional[str] = None
+    LITELLM_MODEL: str | None = None
+    LITELLM_BASE_URL: str | None = None
 
     # Image generation
     IMAGE_PROVIDER: str = "dalle"
@@ -54,7 +51,7 @@ class Settings(BaseSettings):
 
     # CAPTCHA
     CAPTCHA_SOLVER: str = "2captcha"
-    CAPTCHA_API_KEY: Optional[str] = None
+    CAPTCHA_API_KEY: str | None = None
 
     # ChromaDB
     CHROMADB_URL: str = "http://localhost:8002"

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from enum import StrEnum
-
-from sqlalchemy import Boolean, String
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from socialmind.models.base import Base, TimestampMixin, uuid_pk
@@ -30,4 +28,4 @@ class Persona(Base, TimestampMixin):
     like_probability: Mapped[float] = mapped_column(default=0.8)
     follow_back_probability: Mapped[float] = mapped_column(default=0.5)
 
-    accounts: Mapped[list["Account"]] = relationship(back_populates="persona")  # noqa: F821
+    accounts: Mapped[list[Account]] = relationship(back_populates="persona")  # noqa: F821

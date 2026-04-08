@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -25,10 +25,10 @@ if TYPE_CHECKING:
 
 def _generate_totp(secret: str) -> str:
     """Generate a TOTP code from the given base32 secret."""
+    import base64
     import hmac
     import struct
     import time
-    import base64
 
     key = base64.b32decode(secret.upper())
     counter = int(time.time()) // 30
@@ -332,7 +332,7 @@ class InstagramAdapter(BasePlatformAdapter):
                         comments_count=mi.get("comment_count", 0),
                         posted_at=datetime.fromtimestamp(
                             mi.get("taken_at", 0),
-                            tz=timezone.utc,
+                            tz=UTC,
                         ),
                         raw=mi,
                     )

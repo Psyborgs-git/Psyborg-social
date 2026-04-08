@@ -6,14 +6,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from socialmind.api.dependencies import (
-    get_current_user,
     get_account_service,
-    get_post_service,
+    get_current_user,
     get_db,
+    get_post_service,
 )
 from socialmind.models.account import Account
 from socialmind.models.user import User
@@ -143,7 +143,7 @@ async def pause_account(
     _: Annotated[User, Depends(get_current_user)] = None,
     account_service: Annotated[AccountService, Depends(get_account_service)] = None,
 ):
-    account = await account_service.pause(
+    await account_service.pause(
         account_id,
         reason=body.reason if body is not None else None,
     )
@@ -156,7 +156,7 @@ async def resume_account(
     _: Annotated[User, Depends(get_current_user)] = None,
     account_service: Annotated[AccountService, Depends(get_account_service)] = None,
 ):
-    account = await account_service.resume(account_id)
+    await account_service.resume(account_id)
     return {"id": account_id, "status": "resumed"}
 
 

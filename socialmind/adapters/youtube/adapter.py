@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from loguru import logger
 
@@ -301,6 +301,7 @@ class YouTubeAdapter(BasePlatformAdapter):
         """Use yt-dlp to scrape trending/search results without consuming API quota."""
         try:
             import asyncio
+
             import yt_dlp  # type: ignore[import-untyped]
 
             ydl_opts: dict = {

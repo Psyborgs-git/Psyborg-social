@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import bcrypt
 
-from socialmind.api.dependencies import get_db, get_current_user
+from socialmind.api.dependencies import get_current_user, get_db
 from socialmind.models.user import User
 from socialmind.security.auth import (
+    AuthenticationError,
     create_access_token,
     create_refresh_token,
     decode_token,
-    AuthenticationError,
 )
 
 router = APIRouter()

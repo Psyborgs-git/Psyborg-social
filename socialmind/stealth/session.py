@@ -3,9 +3,8 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from socialmind.stealth.fingerprint import FingerprintProfile, apply_stealth
-
 from socialmind.session import RedisSessionManager
+from socialmind.stealth.fingerprint import FingerprintProfile, apply_stealth
 
 if TYPE_CHECKING:
     from playwright.async_api import Browser, BrowserContext
@@ -13,12 +12,12 @@ if TYPE_CHECKING:
     from socialmind.models.account import Account
     from socialmind.models.proxy import Proxy
 
-_context_cache: dict[str, "BrowserContext"] = {}
-_browser: "Browser | None" = None
+_context_cache: dict[str, BrowserContext] = {}
+_browser: Browser | None = None
 _browser_lock = asyncio.Lock()
 
 
-async def get_shared_browser() -> "Browser":
+async def get_shared_browser() -> Browser:
     """Return the singleton Playwright browser instance, launching it if needed."""
     global _browser
     async with _browser_lock:
@@ -50,9 +49,9 @@ class BrowserContextFactory:
 
     @staticmethod
     async def get_or_create(
-        account: "Account",
-        proxy: "Proxy | None",
-    ) -> "BrowserContext":
+        account: Account,
+        proxy: Proxy | None,
+    ) -> BrowserContext:
         """Return or create an isolated browser context for the given account."""
         account_id = account.id
 
@@ -99,7 +98,7 @@ class BrowserContextFactory:
         return ctx
 
     @staticmethod
-    async def save_state(account: "Account") -> None:
+    async def save_state(account: Account) -> None:
         """Persist browser cookies and storage to the account session after each use."""
         ctx = _context_cache.get(account.id)
         if ctx and not ctx.is_closed() and account.sessions:

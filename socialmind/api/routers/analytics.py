@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from socialmind.api.dependencies import get_current_user, get_db, get_post_service
+from socialmind.api.dependencies import get_current_user, get_db
 from socialmind.models.account import Account, AccountStatus
 from socialmind.models.platform import Platform
 from socialmind.models.task import Task, TaskStatus
 from socialmind.models.user import User
-from socialmind.services.post_service import PostService
 
 router = APIRouter()
 
@@ -36,7 +35,7 @@ async def get_summary(
         await db.execute(select(func.count()).select_from(Task))
     ).scalar_one()
 
-    today_start = datetime.now(timezone.utc).replace(
+    today_start = datetime.now(UTC).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
     tasks_today = (
@@ -96,7 +95,7 @@ async def get_summary(
 async def get_engagement(
     _: Annotated[User, Depends(get_current_user)] = None,
 ):
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     data = []
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)

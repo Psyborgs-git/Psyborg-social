@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Callable
 
 
 class CircuitState(Enum):
@@ -87,7 +87,7 @@ class CircuitBreaker:
     async def _on_failure(self) -> None:
         async with self._lock:
             self._failure_count += 1
-            self._last_failure_time = datetime.now(timezone.utc)
+            self._last_failure_time = datetime.now(UTC)
 
             if self._state == CircuitState.HALF_OPEN:
                 self._state = CircuitState.OPEN
@@ -97,7 +97,7 @@ class CircuitBreaker:
     def _should_attempt_reset(self) -> bool:
         if self._last_failure_time is None:
             return True
-        elapsed = (datetime.now(timezone.utc) - self._last_failure_time).total_seconds()
+        elapsed = (datetime.now(UTC) - self._last_failure_time).total_seconds()
         return elapsed >= self.recovery_timeout
 
     def reset(self) -> None:

@@ -87,8 +87,8 @@ def create_superuser(
 
     async def _create() -> None:
         import getpass
+
         import bcrypt
-        import uuid
         from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
         from socialmind.config.settings import settings

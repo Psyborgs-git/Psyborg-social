@@ -16,6 +16,8 @@ socialmind/adapters/facebook/__init__.py
 socialmind/adapters/facebook/adapter.py
 socialmind/adapters/instagram/__init__.py
 socialmind/adapters/instagram/adapter.py
+socialmind/adapters/linkedin/__init__.py
+socialmind/adapters/linkedin/adapter.py
 socialmind/adapters/reddit/__init__.py
 socialmind/adapters/reddit/adapter.py
 socialmind/adapters/threads/__init__.py
@@ -43,7 +45,10 @@ socialmind/api/routers/accounts.py
 socialmind/api/routers/analytics.py
 socialmind/api/routers/auth.py
 socialmind/api/routers/campaigns.py
+socialmind/api/routers/media.py
+socialmind/api/routers/personas.py
 socialmind/api/routers/tasks.py
+socialmind/api/routers/user.py
 socialmind/api/routers/websocket.py
 socialmind/config/__init__.py
 socialmind/config/logging.py
@@ -96,6 +101,8 @@ socialmind/services/account_service.py
 socialmind/services/campaign_service.py
 socialmind/services/post_service.py
 socialmind/services/social_service.py
+socialmind/session/__init__.py
+socialmind/session/redis_session_manager.py
 socialmind/stealth/__init__.py
 socialmind/stealth/circuit_breaker.py
 socialmind/stealth/fingerprint.py
