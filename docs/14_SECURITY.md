@@ -389,6 +389,7 @@ def validate_proxy_url(proxy_url: str) -> bool:
 
 ```yaml
 # Production docker-compose additions
+# If you use the optional docker-db profile
 services:
   api:
     security_opt:

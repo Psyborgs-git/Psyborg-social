@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from socialmind.models.account import Account
 from socialmind.models.task import Campaign
 
 
@@ -11,10 +13,17 @@ class CampaignRepository:
         self._session = session
 
     async def get_by_id(self, campaign_id: str) -> Campaign | None:
-        return await self._session.get(Campaign, campaign_id)
+        result = await self._session.execute(
+            select(Campaign)
+            .options(selectinload(Campaign.accounts).selectinload(Account.platform))
+            .where(Campaign.id == campaign_id)
+        )
+        return result.scalar_one_or_none()
 
     async def get_all(self, active_only: bool = False) -> list[Campaign]:
-        stmt = select(Campaign)
+        stmt = select(Campaign).options(
+            selectinload(Campaign.accounts).selectinload(Account.platform)
+        )
         if active_only:
             stmt = stmt.where(Campaign.is_active.is_(True))
         result = await self._session.execute(stmt)
@@ -47,4 +56,3 @@ class CampaignRepository:
 
     async def resume(self, campaign_id: str) -> Campaign:
         return await self.update(campaign_id, is_active=True)
-

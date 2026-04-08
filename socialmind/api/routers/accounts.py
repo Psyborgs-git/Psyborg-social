@@ -5,6 +5,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from socialmind.api.dependencies import (
@@ -37,11 +39,19 @@ class PauseRequest(BaseModel):
     reason: str | None = None
 
 
+class PlatformResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    slug: str
+    display_name: str
+
+
 class AccountResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     username: str
     platform_id: str
+    platform: PlatformResponse | None = None
     status: str
     display_name: str | None = None
     daily_action_limit: int
@@ -94,7 +104,12 @@ async def update_account(
     _: Annotated[User, Depends(get_current_user)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
-    account = await db.get(Account, account_id)
+    result = await db.execute(
+        select(Account)
+        .options(selectinload(Account.platform))
+        .where(Account.id == account_id)
+    )
+    account = result.scalar_one_or_none()
     if account is None:
         raise HTTPException(status_code=404, detail="Account not found")
 
@@ -104,8 +119,12 @@ async def update_account(
         account.daily_action_limit = body.daily_action_limit
 
     await db.commit()
-    await db.refresh(account)
-    return account
+    refreshed = await db.execute(
+        select(Account)
+        .options(selectinload(Account.platform))
+        .where(Account.id == account_id)
+    )
+    return refreshed.scalar_one()
 
 
 @router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -120,11 +139,14 @@ async def delete_account(
 @router.post("/{account_id}/pause")
 async def pause_account(
     account_id: str,
-    body: PauseRequest,
+    body: PauseRequest | None = None,
     _: Annotated[User, Depends(get_current_user)] = None,
     account_service: Annotated[AccountService, Depends(get_account_service)] = None,
 ):
-    account = await account_service.pause(account_id, reason=body.reason)
+    account = await account_service.pause(
+        account_id,
+        reason=body.reason if body is not None else None,
+    )
     return {"id": account_id, "status": "paused"}
 
 

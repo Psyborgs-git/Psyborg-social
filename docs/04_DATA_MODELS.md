@@ -84,6 +84,7 @@ class PlatformSlug(StrEnum):
     FACEBOOK = "facebook"
     TWITTER = "twitter"
     THREADS = "threads"
+    LINKEDIN = "linkedin"
 
 class Platform(Base, TimestampMixin):
     __tablename__ = "platforms"

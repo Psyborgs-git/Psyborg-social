@@ -37,8 +37,8 @@ DSPy compiles natural language task descriptions into optimized prompts automati
 
 | Library | Purpose |
 |---|---|
-| `chromadb` | Local vector store for semantic search over scraped content and memory |
-| `sentence-transformers` | Embedding model runner (used with Ollama `nomic-embed-text` as primary) |
+| `chromadb` | Planned local vector store for semantic search over scraped content and memory |
+| `dspy` / `openai` | Embeddings via `dspy.Embedder` (currently `openai/text-embedding-3-small`) |
 | `langchain-text-splitters` | Document chunking utilities (no LangChain orchestration used) |
 
 ---
@@ -53,7 +53,7 @@ DSPy compiles natural language task descriptions into optimized prompts automati
 | `tikhub` / `pyktok` | TikTok | TikTok private API wrappers; browser automation primary fallback |
 | `praw` | Reddit | Official Reddit API (free tier). Rate limited but officially supported |
 | `yt-dlp` | YouTube | Scraping and downloading; use YouTube Data API v3 for uploads |
-| `google-api-python-client` | YouTube | Official API for uploads, comments, channel management |
+| `google-api-python-client` | YouTube | Optional API client for uploads/comments; install only when YouTube automation is enabled |
 | `tweepy` | X (Twitter) | Official API v2. Free tier has heavy limits; browser automation fills gaps |
 | `facebook-sdk` | Facebook | Official Graph API where scope allows; Playwright for the rest |
 
@@ -175,30 +175,10 @@ The MCP server is implemented as a Starlette app mounted on FastAPI, exposing al
 
 | Tool | Purpose |
 |---|---|
-| `ruff` | Extremely fast Python linter + formatter (replaces black, isort, flake8) |
+| `ruff` | Fast linting and formatting |
 | `mypy` | Static type checking |
 | `pytest` | Test runner |
-| `pytest-asyncio` | Async test support |
-| `pytest-playwright` | Browser automation testing |
-| `factory-boy` | Test data factories |
-| `pre-commit` | Git hooks for linting |
-| `typer` | CLI framework (management commands) |
-| `rich` | Beautiful terminal output for CLI |
-| `loguru` | Structured logging with rotation |
-| `sentry-sdk` | Error tracking (optional, self-hosted Sentry or Sentry.io) |
-
----
-
-## Infrastructure & DevOps
-
-| Tool | Purpose |
-|---|---|
-| **Docker** | Container runtime |
-| **Docker Compose** | Multi-service local orchestration |
-| **Nginx** | Reverse proxy in front of FastAPI + UI (production) |
-| **Traefik** | Alternative to Nginx with automatic TLS (optional) |
-| **GitHub Actions** | CI/CD pipeline |
-| **Watchtower** | Auto-pull updated Docker images in production |
+| `uv` | Dependency resolution, lockfile generation, and environment syncing |
 
 ---
 
@@ -206,64 +186,27 @@ The MCP server is implemented as a Starlette app mounted on FastAPI, exposing al
 
 ```toml
 # pyproject.toml (excerpt)
-[tool.poetry]
+[project]
 name = "socialmind"
 version = "0.1.0"
-python = "^3.12"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+  "fastapi>=0.111,<0.112",
+  "uvicorn[standard]>=0.29,<0.30",
+  "sqlalchemy[asyncio]>=2.0,<3.0",
+  "celery[redis]>=5.4,<6.0",
+  "playwright>=1.44,<2.0",
+]
 
-[tool.poetry.dependencies]
-# AI
-dspy-ai = "^2.0"
-litellm = "^1.0"
-chromadb = "^0.5"
-sentence-transformers = "^3.0"
-
-# Platform adapters
-instagrapi = "^2.0"
-praw = "^7.0"
-tweepy = "^4.0"
-google-api-python-client = "^2.0"
-yt-dlp = "*"
-httpx = "^0.27"
-curl-cffi = "^0.7"
-
-# Browser automation
-playwright = "^1.44"
-playwright-stealth = "^1.0"
-fake-useragent = "^1.5"
-
-# Web framework
-fastapi = "^0.111"
-uvicorn = {extras = ["standard"], version = "^0.29"}
-pydantic = "^2.7"
-pydantic-settings = "^2.2"
-
-# Database
-sqlalchemy = {extras = ["asyncio"], version = "^2.0"}
-alembic = "^1.13"
-asyncpg = "^0.29"
-redis = {extras = ["hiredis"], version = "^5.0"}
-
-# Task queue
-celery = {extras = ["redis"], version = "^5.4"}
-flower = "^2.0"
-
-# MCP
-mcp = "^1.0"
-
-# Media
-Pillow = "^10.0"
-ffmpeg-python = "^0.2"
-moviepy = "^1.0"
-
-# Stealth
-python-socks = "^2.0"
-
-# Utilities
-loguru = "^0.7"
-typer = "^0.12"
-rich = "^13.0"
+[project.optional-dependencies]
+dev = ["ruff>=0.4,<0.5", "mypy>=1.10,<2.0", "pytest>=8.0,<9.0"]
 ```
+
+- Run `uv lock` to regenerate `uv.lock`
+- Run `uv sync --python 3.12 --extra dev` for local development
+- Run `uv sync --frozen --no-dev --no-install-project` in Docker builds
+- Enable optional integrations with extras such as `browser`, `media`, `social-instagram`, `social-reddit`, `social-twitter`, and `social-youtube`
+- Use `bun install` / `bun run build` for the UI package manager and production bundle
 
 ---
 

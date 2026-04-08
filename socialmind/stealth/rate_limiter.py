@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -10,12 +10,12 @@ if TYPE_CHECKING:
 
 
 def _hour_bucket() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H")
 
 
 def _day_bucket() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
 class AccountRateLimiter:
@@ -82,9 +82,17 @@ class AccountRateLimiter:
             "dms": (20, 80),
             "unfollows": (60, 200),
         },
+        "linkedin": {
+            "likes": (60, 300),
+            "follows": (30, 120),
+            "comments": (20, 80),
+            "posts": (5, 20),
+            "dms": (20, 80),
+            "unfollows": (30, 120),
+        },
     }
 
-    def __init__(self, redis_client: "redis.Redis") -> None:
+    def __init__(self, redis_client: redis.Redis) -> None:
         self._redis = redis_client
 
     async def check_and_increment(
@@ -127,9 +135,7 @@ class AccountRateLimiter:
 
         return True
 
-    async def get_counts(
-        self, account_id: str, platform: str, action: str
-    ) -> dict[str, int]:
+    async def get_counts(self, account_id: str, platform: str, action: str) -> dict[str, int]:
         """Return current hourly and daily counts for an account/action pair."""
         hourly_key = f"sm:rl:{account_id}:{action}:{_hour_bucket()}"
         daily_key = f"sm:rl:{account_id}:{action}:{_day_bucket()}"
@@ -149,9 +155,7 @@ def rate_limited(platform: str, action: str):
         async def wrapper(self, *args, **kwargs):
             limiter: AccountRateLimiter | None = getattr(self, "_rate_limiter", None)
             if limiter is not None:
-                allowed = await limiter.check_and_increment(
-                    self.account.id, platform, action
-                )
+                allowed = await limiter.check_and_increment(self.account.id, platform, action)
                 if not allowed:
                     logger.warning(
                         "Rate limit hit for account=%s platform=%s action=%s",

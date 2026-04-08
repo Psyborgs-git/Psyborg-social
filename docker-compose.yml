@@ -1,11 +1,12 @@
-version: "3.9"
-
 x-api-common: &api-common
   build:
     context: .
     dockerfile: docker/api.Dockerfile
+    args:
+      UV_EXTRAS: ${UV_EXTRAS:-}
+      INSTALL_PLAYWRIGHT: ${INSTALL_PLAYWRIGHT:-false}
   environment:
-    DATABASE_URL: postgresql+asyncpg://socialmind:${POSTGRES_PASSWORD:-socialmind}@postgres:5432/socialmind
+    DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-socialmind}:${POSTGRES_PASSWORD:-socialmind}@${DATABASE_HOST:-host.docker.internal}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-socialmind}
     REDIS_URL: redis://redis:6379/0
     MINIO_ENDPOINT: minio:9000
     MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-socialmind}
@@ -15,33 +16,41 @@ x-api-common: &api-common
     ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
     LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
     OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+    EMBED_PROVIDER: ${EMBED_PROVIDER:-ollama}
     IMAGE_PROVIDER: ${IMAGE_PROVIDER:-dalle}
     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     MCP_API_KEY: ${MCP_API_KEY:-change-me}
+    MCP_REQUIRE_AUTH: ${MCP_REQUIRE_AUTH:-true}
     CHROMADB_URL: http://chromadb:8002
     DEBUG: ${DEBUG:-false}
     LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   volumes:
     - playwright_data:/ms-playwright
   depends_on:
-    postgres:
-      condition: service_healthy
     redis:
+      condition: service_healthy
+    ollama:
       condition: service_healthy
   restart: unless-stopped
 
 services:
   postgres:
     image: postgres:16-alpine
+    profiles: ["docker-db"]
     environment:
-      POSTGRES_USER: socialmind
+      POSTGRES_USER: ${POSTGRES_USER:-socialmind}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-socialmind}
-      POSTGRES_DB: socialmind
+      POSTGRES_DB: ${DATABASE_NAME:-socialmind}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U socialmind"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-socialmind} -d ${DATABASE_NAME:-socialmind}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -68,8 +77,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_API_HOST_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
     restart: unless-stopped
 
   chromadb:
@@ -77,29 +86,49 @@ services:
     volumes:
       - chromadb_data:/chroma/chroma
     ports:
-      - "8002:8000"
+      - "${CHROMADB_HOST_PORT:-8002}:8000"
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    ports:
+      - "${OLLAMA_HOST_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
     restart: unless-stopped
 
   api:
     <<: *api-common
     command: uvicorn socialmind.api.main:app --host 0.0.0.0 --port 8000 --workers 2
     ports:
-      - "8000:8000"
+      - "${API_HOST_PORT:-8000}:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 90s
 
   mcp:
     <<: *api-common
     command: uvicorn socialmind.mcp.app:app --host 0.0.0.0 --port 8001 --workers 1
     ports:
-      - "8001:8001"
+      - "${MCP_HOST_PORT:-8001}:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     depends_on:
       api:
-        condition: service_healthy
-      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -130,26 +159,29 @@ services:
       --port=5555
       --basic_auth=admin:${FLOWER_PASSWORD:-flower}
     ports:
-      - "5555:5555"
+      - "${FLOWER_HOST_PORT:-5555}:5555"
 
   ui:
     build:
       context: .
       dockerfile: docker/ui.Dockerfile
     ports:
-      - "3000:80"
+      - "${UI_HOST_PORT:-3000}:80"
     restart: unless-stopped
 
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "${NGINX_HOST_PORT:-80}:80"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - api
-      - mcp
-      - ui
+      api:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+      ui:
+        condition: service_started
     restart: unless-stopped
 
 volumes:
@@ -157,5 +189,6 @@ volumes:
   redis_data:
   minio_data:
   chromadb_data:
+  ollama_data:
   playwright_data:
   celery_beat_data:

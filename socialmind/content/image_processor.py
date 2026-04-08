@@ -27,6 +27,9 @@ class ImageProcessor:
             "post": (1200, 630),
             "story": (1080, 1920),
         },
+        "linkedin": {
+            "post": (1200, 627),
+        },
     }
 
     @staticmethod
@@ -116,4 +119,3 @@ class ImageProcessor:
         output = io.BytesIO()
         combined.convert("RGB").save(output, format="JPEG", quality=90)
         return output.getvalue()
-

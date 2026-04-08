@@ -211,12 +211,12 @@ Each account runs in complete isolation:
 ```
 Service         Image                    Ports     Depends On
 ──────────────────────────────────────────────────────────────
-api             socialmind/api           8000      postgres, redis
-worker          socialmind/api           —         postgres, redis, ollama
-beat            socialmind/api           —         postgres, redis
+api             socialmind/api           8000      host PostgreSQL, redis
+worker          socialmind/api           —         host PostgreSQL, redis, ollama
+beat            socialmind/api           —         host PostgreSQL, redis
 mcp             socialmind/mcp           8001      api (internal)
 ui              socialmind/ui            3000      api
-postgres        postgres:16              5432      —
+postgres*       postgres:16              5432      —
 redis           redis:7-alpine           6379      —
 ollama          ollama/ollama            11434     —
 minio           minio/minio              9000,9001 —
@@ -224,6 +224,8 @@ chromadb        chromadb/chroma          8002      —
 flower          mher/flower              5555      redis
 nginx           nginx:alpine             80,443    ui, api, mcp
 ```
+
+`*` Optional service enabled with `docker compose --profile docker-db up -d postgres`; the default local topology uses the host PostgreSQL cluster on port `5432`.
 
 ---
 

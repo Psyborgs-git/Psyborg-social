@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from socialmind.api.dependencies import (
     get_current_user,
@@ -20,13 +20,30 @@ class CampaignCreate(BaseModel):
     name: str
     description: str | None = None
     cron_expression: str | None = None
-    account_ids: list[str] = []
+    account_ids: list[str] = Field(default_factory=list)
 
 
 class CampaignUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     cron_expression: str | None = None
+
+
+class PlatformResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    slug: str
+    display_name: str
+
+
+class CampaignAccountResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    username: str
+    display_name: str | None = None
+    platform_id: str
+    status: str
+    platform: PlatformResponse | None = None
 
 
 class CampaignResponse(BaseModel):
@@ -36,6 +53,7 @@ class CampaignResponse(BaseModel):
     description: str | None = None
     is_active: bool
     cron_expression: str | None = None
+    accounts: list[CampaignAccountResponse] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -116,3 +134,49 @@ async def resume_campaign(
 ):
     await campaign_service.resume(campaign_id)
     return {"id": campaign_id, "status": "active"}
+
+
+@router.post("/{campaign_id}/activate")
+async def activate_campaign(
+    campaign_id: str,
+    _: Annotated[User, Depends(get_current_user)] = None,
+    campaign_service: Annotated[CampaignService, Depends(get_campaign_service)] = None,
+):
+    await campaign_service.resume(campaign_id)
+    return {"id": campaign_id, "status": "active"}
+
+
+@router.post("/{campaign_id}/deactivate")
+async def deactivate_campaign(
+    campaign_id: str,
+    _: Annotated[User, Depends(get_current_user)] = None,
+    campaign_service: Annotated[CampaignService, Depends(get_campaign_service)] = None,
+):
+    await campaign_service.pause(campaign_id)
+    return {"id": campaign_id, "status": "paused"}
+
+
+@router.post("/{campaign_id}/accounts/{account_id}", response_model=CampaignResponse)
+async def add_account_to_campaign(
+    campaign_id: str,
+    account_id: str,
+    _: Annotated[User, Depends(get_current_user)] = None,
+    campaign_service: Annotated[CampaignService, Depends(get_campaign_service)] = None,
+):
+    try:
+        return await campaign_service.add_account(campaign_id, account_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.delete("/{campaign_id}/accounts/{account_id}", response_model=CampaignResponse)
+async def remove_account_from_campaign(
+    campaign_id: str,
+    account_id: str,
+    _: Annotated[User, Depends(get_current_user)] = None,
+    campaign_service: Annotated[CampaignService, Depends(get_campaign_service)] = None,
+):
+    try:
+        return await campaign_service.remove_account(campaign_id, account_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

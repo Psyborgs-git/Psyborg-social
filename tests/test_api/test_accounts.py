@@ -9,7 +9,9 @@ from socialmind.api.main import app
 
 @pytest.mark.asyncio
 async def test_health_check():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
@@ -17,7 +19,9 @@ async def test_health_check():
 
 @pytest.mark.asyncio
 async def test_list_accounts_requires_auth():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/api/v1/accounts/")
     assert response.status_code == 401
 
@@ -26,17 +30,24 @@ async def test_list_accounts_requires_auth():
 async def test_list_accounts_with_mock_auth():
     from socialmind.api.dependencies import get_current_user, get_account_service
     from socialmind.models.account import Account, AccountStatus
+    from socialmind.models.platform import Platform
 
     mock_account = MagicMock(spec=Account)
     mock_account.id = "acc-1"
     mock_account.username = "testuser"
-    mock_account.platform_id = "instagram"
+    mock_account.platform_id = "platform-1"
+    mock_platform = MagicMock(spec=Platform)
+    mock_platform.id = "platform-1"
+    mock_platform.slug = "instagram"
+    mock_platform.display_name = "Instagram"
+    mock_account.platform = mock_platform
     mock_account.status = AccountStatus.ACTIVE
     mock_account.display_name = None
     mock_account.daily_action_limit = 100
     mock_account.warmup_phase = False
 
     from datetime import datetime, timezone
+
     mock_account.created_at = datetime.now(timezone.utc)
 
     mock_service = AsyncMock()
@@ -46,10 +57,13 @@ async def test_list_accounts_with_mock_auth():
     app.dependency_overrides[get_account_service] = lambda: mock_service
 
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.get("/api/v1/accounts/")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
+        assert data[0]["platform"]["display_name"] == "Instagram"
     finally:
         app.dependency_overrides.clear()

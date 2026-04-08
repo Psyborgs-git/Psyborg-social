@@ -5,11 +5,22 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 
+_EXEMPT_SUFFIXES = ("/health", "/docs", "/openapi.json")
+
+
+def _is_exempt_path(path: str) -> bool:
+    normalized = path.rstrip("/") or "/"
+    return any(
+        normalized == suffix or normalized.endswith(suffix)
+        for suffix in _EXEMPT_SUFFIXES
+    )
+
+
 class MCPAuthMiddleware(BaseHTTPMiddleware):
     """Validates Bearer token on all MCP server requests."""
 
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in ("/health", "/docs", "/openapi.json"):
+        if request.method == "OPTIONS" or _is_exempt_path(request.url.path):
             return await call_next(request)
 
         from socialmind.config.settings import settings

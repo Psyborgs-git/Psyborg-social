@@ -16,6 +16,7 @@ class PlatformSlug(StrEnum):
     FACEBOOK = "facebook"
     TWITTER = "twitter"
     THREADS = "threads"
+    LINKEDIN = "linkedin"
 
 
 class Platform(Base, TimestampMixin):
@@ -33,4 +34,4 @@ class Platform(Base, TimestampMixin):
     supports_video: Mapped[bool] = mapped_column(Boolean, default=False)
     supports_polls: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    accounts: Mapped[list["Account"]] = relationship(back_populates="platform")  # noqa: F821
+    accounts: Mapped[list[Account]] = relationship(back_populates="platform")  # noqa: F821

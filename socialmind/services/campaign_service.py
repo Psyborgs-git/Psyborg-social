@@ -33,12 +33,12 @@ class CampaignService:
         account_ids: list[str] | None = None,
         config: dict | None = None,
     ) -> Campaign:
+        _ = config
         campaign = await self._repo.create(
             name=name,
             description=description,
             cron_expression=cron_expression,
             is_active=True,
-            config=config or {},
         )
 
         if account_ids:
@@ -48,21 +48,27 @@ class CampaignService:
                     campaign.accounts.append(account)
             await self._session.flush()
 
-        return campaign
+        await self._session.commit()
+        return await self.get_campaign(campaign.id)
 
-    async def update_campaign(
-        self, campaign_id: str, **kwargs: object
-    ) -> Campaign:
-        return await self._repo.update(campaign_id, **kwargs)
+    async def update_campaign(self, campaign_id: str, **kwargs: object) -> Campaign:
+        campaign = await self._repo.update(campaign_id, **kwargs)
+        await self._session.commit()
+        return await self.get_campaign(campaign.id)
 
     async def pause(self, campaign_id: str) -> Campaign:
-        return await self._repo.pause(campaign_id)
+        campaign = await self._repo.pause(campaign_id)
+        await self._session.commit()
+        return await self.get_campaign(campaign.id)
 
     async def resume(self, campaign_id: str) -> Campaign:
-        return await self._repo.resume(campaign_id)
+        campaign = await self._repo.resume(campaign_id)
+        await self._session.commit()
+        return await self.get_campaign(campaign.id)
 
     async def delete(self, campaign_id: str) -> None:
         await self._repo.delete(campaign_id)
+        await self._session.commit()
 
     async def add_account(self, campaign_id: str, account_id: str) -> Campaign:
         campaign = await self.get_campaign(campaign_id)
@@ -72,11 +78,12 @@ class CampaignService:
         if account not in campaign.accounts:
             campaign.accounts.append(account)
             await self._session.flush()
-        return campaign
+            await self._session.commit()
+        return await self.get_campaign(campaign.id)
 
     async def remove_account(self, campaign_id: str, account_id: str) -> Campaign:
         campaign = await self.get_campaign(campaign_id)
         campaign.accounts = [a for a in campaign.accounts if a.id != account_id]
         await self._session.flush()
-        return campaign
-
+        await self._session.commit()
+        return await self.get_campaign(campaign.id)

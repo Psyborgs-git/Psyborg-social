@@ -7,7 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     # Security
     SECRET_KEY: str = "dev-secret-key-change-in-production"
@@ -17,11 +19,15 @@ class Settings(BaseSettings):
     MCP_REQUIRE_AUTH: bool = True
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://socialmind:socialmind@localhost:5432/socialmind"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://socialmind:socialmind@localhost:5432/socialmind"
+    )
     POSTGRES_PASSWORD: str = "socialmind"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_SESSION_ENABLED: bool = True
+    REDIS_SESSION_TTL: int = 60 * 60 * 24
 
     # MinIO
     MINIO_ENDPOINT: str = "localhost:9000"

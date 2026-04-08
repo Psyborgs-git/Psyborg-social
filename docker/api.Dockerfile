@@ -1,31 +1,37 @@
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libpq-dev curl && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir poetry==1.8.3
-
-COPY pyproject.toml poetry.lock* ./
-RUN poetry config virtualenvs.create false \
-    && poetry install --only=main --no-interaction --no-ansi
+FROM ghcr.io/astral-sh/uv:0.10.12 AS uv
 
 FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 curl && \
-    rm -rf /var/lib/apt/lists/*
+ARG UV_EXTRAS=""
+ARG INSTALL_PLAYWRIGHT="false"
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=uv /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock ./
+RUN set -eu; \
+        extra_args=""; \
+        if [ -n "$UV_EXTRAS" ]; then \
+            old_ifs="$IFS"; \
+            IFS=','; \
+            for extra in $UV_EXTRAS; do \
+                if [ -n "$extra" ]; then \
+                    extra_args="$extra_args --extra $extra"; \
+                fi; \
+            done; \
+            IFS="$old_ifs"; \
+        fi; \
+        uv sync --frozen --no-dev --no-install-project $extra_args
+
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH=/app/.venv/bin:$PATH
 
 COPY . .
 
-RUN playwright install chromium --with-deps 2>/dev/null || true
+RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ] && command -v playwright >/dev/null 2>&1; then \
+            playwright install chromium --with-deps; \
+        fi
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -3,9 +3,6 @@ from __future__ import annotations
 import os
 from uuid import uuid4
 
-import ffmpeg
-from moviepy.editor import CompositeVideoClip, TextClip, VideoFileClip
-
 _MEDIA_TMP = "media_tmp"
 
 _PLATFORM_SPECS: dict[str, dict[str, object]] = {
@@ -37,13 +34,41 @@ _PLATFORM_SPECS: dict[str, dict[str, object]] = {
         "bitrate": "2M",
         "max_seconds": 140,
     },
+    "linkedin": {
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "bitrate": "5M",
+        "max_seconds": 600,
+    },
 }
+
+
+def _require_ffmpeg():
+    try:
+        import ffmpeg
+    except ImportError as exc:
+        raise RuntimeError(
+            "ffmpeg-python is not installed. Install the 'media' extra to use video processing features."
+        ) from exc
+    return ffmpeg
+
+
+def _require_moviepy():
+    try:
+        from moviepy.editor import CompositeVideoClip, TextClip, VideoFileClip
+    except ImportError as exc:
+        raise RuntimeError(
+            "moviepy is not installed. Install the 'media' extra to use captioning and slideshow features."
+        ) from exc
+    return CompositeVideoClip, TextClip, VideoFileClip
 
 
 class VideoProcessor:
     @staticmethod
     async def transcode_for_platform(input_path: str, platform: str) -> str:
         """Transcode video to the platform-required specs."""
+        ffmpeg = _require_ffmpeg()
         spec = _PLATFORM_SPECS[platform]
         output_path = f"{input_path}_transcoded.mp4"
 
@@ -71,15 +96,14 @@ class VideoProcessor:
         return output_path
 
     @staticmethod
-    async def add_captions(
-        video_path: str, captions: list[dict[str, object]]
-    ) -> str:
+    async def add_captions(video_path: str, captions: list[dict[str, object]]) -> str:
         """Add timed text captions to a video."""
-        clip = VideoFileClip(video_path)
+        composite_video_clip, text_clip, video_file_clip = _require_moviepy()
+        clip = video_file_clip(video_path)
         text_clips = []
         for caption in captions:
             txt = (
-                TextClip(
+                text_clip(
                     str(caption["text"]),
                     fontsize=50,
                     color="white",
@@ -92,7 +116,7 @@ class VideoProcessor:
             )
             text_clips.append(txt)
 
-        final = CompositeVideoClip([clip] + text_clips)
+        final = composite_video_clip([clip] + text_clips)
         output_path = video_path.replace(".mp4", "_captioned.mp4")
         final.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
         return output_path
@@ -104,6 +128,7 @@ class VideoProcessor:
         audio_path: str | None = None,
     ) -> str:
         """Create a video slideshow from multiple images."""
+        ffmpeg = _require_ffmpeg()
         os.makedirs(_MEDIA_TMP, exist_ok=True)
         output_path = os.path.join(_MEDIA_TMP, f"slideshow_{uuid4()}.mp4")
         total_duration = len(image_paths) * duration_per_image
@@ -114,12 +139,9 @@ class VideoProcessor:
 
         if audio_path:
             audio = ffmpeg.input(audio_path, t=total_duration)
-            out = ffmpeg.output(
-                stream, audio.audio, output_path, vcodec="libx264", acodec="aac"
-            )
+            out = ffmpeg.output(stream, audio.audio, output_path, vcodec="libx264", acodec="aac")
         else:
             out = ffmpeg.output(stream, output_path, vcodec="libx264")
 
         out.overwrite_output().run(quiet=True)
         return output_path
-

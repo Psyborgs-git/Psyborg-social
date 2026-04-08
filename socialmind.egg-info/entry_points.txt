@@ -1,0 +1,2 @@
+[console_scripts]
+socialmind = socialmind.cli:app

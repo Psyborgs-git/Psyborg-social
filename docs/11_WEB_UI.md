@@ -345,17 +345,17 @@ The UI is built into a static bundle and served by Nginx:
 
 ```dockerfile
 # docker/ui.Dockerfile
-FROM node:20-alpine AS builder
+FROM oven/bun:1.3.11-alpine AS builder
 WORKDIR /app
-COPY ui/package*.json ./
-RUN npm ci
+COPY ui/package.json ui/bun.lock ./
+RUN bun install --frozen-lockfile
 COPY ui/ .
-RUN npm run build
+RUN bun run build
 
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 3000
+EXPOSE 80
 ```
 
 ```nginx

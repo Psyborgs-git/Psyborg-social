@@ -8,6 +8,7 @@ from socialmind.repositories.task_repository import TaskRepository
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+    from socialmind.models.task import Task
 
 
 @dataclass
@@ -36,7 +37,7 @@ class PostService:
         post_type: str = "feed",
         include_image: bool = True,
         schedule_at: str | None = None,
-    ) -> str:
+    ) -> "Task":
         """Create a scheduled post task and enqueue it in Celery."""
         from datetime import UTC, datetime
 
@@ -62,8 +63,10 @@ class PostService:
         celery_result = execute_post.apply_async(args=[task.id], eta=eta)
         task.celery_task_id = celery_result.id
         await self._session.flush()
+        await self._session.commit()
+        await self._session.refresh(task)
 
-        return task.id
+        return task
 
     async def get_recent_posts(
         self, account_id: str, limit: int = 10
@@ -93,4 +96,3 @@ class PostService:
             )
             for r in rows
         ]
-

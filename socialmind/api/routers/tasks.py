@@ -35,6 +35,7 @@ class TaskResponse(BaseModel):
     status: str
     config: dict
     scheduled_at: datetime | None
+    retry_count: int
     created_at: datetime
 
 
@@ -62,6 +63,7 @@ async def list_tasks(
     else:
         from sqlalchemy import select
         from socialmind.models.task import Task as TaskModel
+
         stmt = select(TaskModel).limit(limit).offset(offset)
         if status:
             stmt = stmt.where(TaskModel.status == status)
@@ -96,6 +98,22 @@ async def create_task(
             config=body.config,
             scheduled_at=scheduled_at,
         )
+        await db.commit()
+        await db.refresh(task)
+    return task
+
+
+async def _cancel_task(task_id: str, db: AsyncSession) -> Task:
+    task = await db.get(Task, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    repo = TaskRepository(db)
+    if task.status not in {TaskStatus.SUCCESS, TaskStatus.FAILED, TaskStatus.SKIPPED}:
+        task = await repo.update_status(task_id, TaskStatus.SKIPPED)
+        await db.commit()
+        await db.refresh(task)
+
     return task
 
 
@@ -117,11 +135,16 @@ async def cancel_task(
     _: Annotated[User, Depends(get_current_user)] = None,
     db: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
-    task = await db.get(Task, task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    repo = TaskRepository(db)
-    await repo.update_status(task_id, TaskStatus.FAILED)
+    await _cancel_task(task_id, db)
+
+
+@router.post("/{task_id}/cancel", response_model=TaskResponse)
+async def cancel_task_via_post(
+    task_id: str,
+    _: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+):
+    return await _cancel_task(task_id, db)
 
 
 @router.get("/{task_id}/logs", response_model=list[TaskLogResponse])

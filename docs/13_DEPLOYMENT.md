@@ -1,6 +1,6 @@
 # Deployment
 
-SocialMind is Docker-first. Everything runs in containers. This document covers the full Docker Compose configuration, environment setup, and production hardening.
+SocialMind is Docker-first for application services. The default local topology uses a PostgreSQL cluster running on the host machine while the API, worker, MCP, UI, Redis, Ollama, MinIO, and ChromaDB run in containers. An optional `docker-db` profile is still available if you want Docker to manage PostgreSQL too.
 
 ---
 
@@ -8,14 +8,15 @@ SocialMind is Docker-first. Everything runs in containers. This document covers 
 
 ```yaml
 # docker-compose.yml
-version: "3.9"
-
 x-api-common: &api-common
   build:
     context: .
     dockerfile: docker/api.Dockerfile
+    args:
+      UV_EXTRAS: ${UV_EXTRAS:-}
+      INSTALL_PLAYWRIGHT: ${INSTALL_PLAYWRIGHT:-false}
   environment:
-    - DATABASE_URL=postgresql+asyncpg://socialmind:${POSTGRES_PASSWORD}@postgres:5432/socialmind
+    - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-socialmind}:${POSTGRES_PASSWORD}@${DATABASE_HOST:-host.docker.internal}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-socialmind}
     - REDIS_URL=redis://redis:6379/0
     - MINIO_ENDPOINT=minio:9000
     - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
@@ -25,18 +26,20 @@ x-api-common: &api-common
     - ENCRYPTION_KEY=${ENCRYPTION_KEY}
     - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
     - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+    - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+    - EMBED_PROVIDER=${EMBED_PROVIDER:-ollama}
     - IMAGE_PROVIDER=${IMAGE_PROVIDER:-dalle}
     - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     - MCP_API_KEY=${MCP_API_KEY}
+    - MCP_REQUIRE_AUTH=${MCP_REQUIRE_AUTH:-true}
     - CHROMADB_URL=http://chromadb:8002
-  volumes:
-    - ./socialmind:/app/socialmind   # Dev: live code reload
-    - playwright_data:/ms-playwright  # Playwright browser binaries
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   depends_on:
-    postgres:
-      condition: service_healthy
     redis:
+      condition: service_healthy
+    ollama:
       condition: service_healthy
   restart: unless-stopped
 
@@ -48,7 +51,7 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,6 +62,11 @@ services:
     command: uvicorn socialmind.mcp.app:app --host 0.0.0.0 --port 8001 --workers 1
     ports:
       - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     depends_on:
       api:
         condition: service_healthy
@@ -102,24 +110,25 @@ services:
       context: .
       dockerfile: docker/ui.Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:80"
     depends_on:
       - api
     restart: unless-stopped
 
-  # ─── PostgreSQL ─────────────────────────────────────────────────────
+  # ─── PostgreSQL (optional local replacement for host DB) ───────────
   postgres:
     image: postgres:16-alpine
+    profiles: ["docker-db"]
     environment:
-      POSTGRES_DB: socialmind
-      POSTGRES_USER: socialmind
+      POSTGRES_DB: ${DATABASE_NAME:-socialmind}
+      POSTGRES_USER: ${POSTGRES_USER:-socialmind}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U socialmind -d socialmind"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-socialmind} -d ${DATABASE_NAME:-socialmind}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -143,17 +152,17 @@ services:
   # ─── Ollama (Local LLM) ─────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
     volumes:
-      - ollama_models:/root/.ollama
+      - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]   # Remove if no GPU
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
     restart: unless-stopped
 
   # ─── MinIO (Object Storage) ─────────────────────────────────────────
@@ -187,7 +196,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  ollama_models:
+  ollama_data:
   minio_data:
   chroma_data:
   playwright_data:
@@ -200,37 +209,31 @@ volumes:
 
 ```dockerfile
 # docker/api.Dockerfile
+FROM ghcr.io/astral-sh/uv:0.10.12 AS uv
 FROM python:3.12-slim
-
-# System dependencies for Playwright + FFmpeg
-RUN apt-get update && apt-get install -y \
-    curl wget git ffmpeg \
-    # Playwright browser dependencies
-    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
-    libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
-    libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY pyproject.toml poetry.lock* ./
-RUN pip install poetry==1.8.3 && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --no-root
+ARG UV_EXTRAS=""
+ARG INSTALL_PLAYWRIGHT="false"
 
-# Install Playwright browsers
-RUN playwright install chromium --with-deps
+COPY --from=uv /uv /uvx /bin/
 
-# Copy application
-COPY socialmind/ ./socialmind/
-COPY migrations/ ./migrations/
-COPY alembic.ini ./
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-# Run DB migrations on startup
-COPY docker/entrypoint.sh ./
-RUN chmod +x entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH=/app/.venv/bin:$PATH
+
+COPY . .
+
+RUN if [ "$INSTALL_PLAYWRIGHT" = "true" ] && command -v playwright >/dev/null 2>&1; then \
+      playwright install chromium --with-deps; \
+    fi
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 ```
 
 ```bash
@@ -238,14 +241,46 @@ ENTRYPOINT ["./entrypoint.sh"]
 # docker/entrypoint.sh
 set -e
 
-# Wait for Postgres
-echo "Waiting for PostgreSQL..."
-until python -c "import asyncpg; import asyncio; asyncio.run(asyncpg.connect('$DATABASE_URL'))"; do
-  sleep 1
-done
+# Wait for PostgreSQL using DATABASE_URL
+echo "[entrypoint] Waiting for Postgres..."
+python - <<'PY'
+from __future__ import annotations
+
+import asyncio
+import os
+
+import asyncpg
+
+
+async def wait_for_postgres() -> None:
+    database_url = os.environ["DATABASE_URL"].replace("+asyncpg", "", 1)
+    timeout_seconds = int(os.getenv("DB_WAIT_TIMEOUT", "120"))
+    attempts = max(timeout_seconds, 1)
+    last_error = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            connection = await asyncpg.connect(database_url, timeout=5)
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            if attempt == attempts:
+                break
+            await asyncio.sleep(1)
+        else:
+            await connection.close()
+            print(f"[entrypoint] PostgreSQL ready after {attempt} attempt(s)")
+            return
+
+    raise SystemExit(
+        f"[entrypoint] Timed out waiting for PostgreSQL after {timeout_seconds}s: {last_error}"
+    )
+
+
+asyncio.run(wait_for_postgres())
+PY
 
 # Run migrations
-echo "Running DB migrations..."
+echo "[entrypoint] Running migrations..."
 alembic upgrade head
 
 # Execute the container's command
@@ -307,28 +342,47 @@ git clone https://github.com/your-org/socialmind.git && cd socialmind
 cp .env.example .env
 # Edit .env with your values
 
-# 3. Start infrastructure first
-docker-compose up -d postgres redis minio
+# 3. Ensure the host PostgreSQL cluster has the app role and database
+psql -U postgres -d postgres <<'SQL'
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'socialmind') THEN
+        CREATE ROLE socialmind LOGIN PASSWORD 'socialmind';
+    ELSE
+        ALTER ROLE socialmind WITH LOGIN PASSWORD 'socialmind';
+    END IF;
+END
+$$;
+SELECT 'CREATE DATABASE socialmind OWNER socialmind'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'socialmind')\gexec
+ALTER DATABASE socialmind OWNER TO socialmind;
+GRANT ALL PRIVILEGES ON DATABASE socialmind TO socialmind;
+SQL
 
-# 4. Pull Ollama model (wait for ollama to start)
-docker-compose up -d ollama
+# Optional: use Docker-managed Postgres instead of the host cluster
+# docker compose --profile docker-db up -d postgres
+
+# 4. Start containerized infrastructure
+docker compose up -d redis minio chromadb ollama
+
+# 5. Pull Ollama model (wait for ollama to start)
 sleep 10
-docker exec socialmind-ollama-1 ollama pull llama3.2
-docker exec socialmind-ollama-1 ollama pull nomic-embed-text
+docker compose exec ollama ollama pull llama3.2
+docker compose exec ollama ollama pull nomic-embed-text
 
-# 5. Start everything
-docker-compose up -d
+# 6. Start everything
+docker compose up -d --build
 
-# 6. Create MinIO bucket
+# 7. Create MinIO bucket
 docker exec socialmind-minio-1 mc alias set local http://localhost:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 docker exec socialmind-minio-1 mc mb local/socialmind
 
-# 7. Create first admin user
+# 8. Create first admin user
 docker exec socialmind-api-1 python -m socialmind.cli user create \
   --username admin \
   --password <your password>
 
-# 8. Open dashboard
+# 9. Open dashboard
 open http://localhost:3000
 ```
 
@@ -360,7 +414,7 @@ services:
     build:
       context: ui
       dockerfile: Dockerfile.dev
-    command: npm run dev -- --host 0.0.0.0 --port 3000
+    command: bun run dev -- --host 0.0.0.0 --port 3000
     volumes:
       - ./ui:/app
       - /app/node_modules
@@ -368,7 +422,7 @@ services:
 
 ```bash
 # Start in dev mode
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
 ---
@@ -407,8 +461,12 @@ traefik:
 ### 4. Backups
 
 ```bash
-# Automated daily PostgreSQL backup
-docker exec socialmind-postgres-1 pg_dump -U socialmind socialmind | gzip > backup_$(date +%Y%m%d).sql.gz
+# Automated daily PostgreSQL backup against the default host cluster
+PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h localhost -U ${POSTGRES_USER:-socialmind} ${DATABASE_NAME:-socialmind} \
+  | gzip > backup_$(date +%Y%m%d).sql.gz
+
+# If you use the optional docker-db profile instead:
+# docker exec socialmind-postgres-1 pg_dump -U socialmind socialmind | gzip > backup_$(date +%Y%m%d).sql.gz
 
 # MinIO backup to external S3
 mc mirror local/socialmind s3/your-backup-bucket/socialmind/

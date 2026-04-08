@@ -94,6 +94,7 @@ class BasePlatformAdapter(ABC):
         self.account = account
         self.session = session
         self.proxy = proxy
+        self.last_error: str | None = None
         self._logger = logger.bind(adapter=self.platform_slug)
         self._rate_limiter = None  # Injected externally if needed
 
@@ -143,7 +144,9 @@ class BasePlatformAdapter(ABC):
         ...
 
     @abstractmethod
-    async def get_dm_history(self, thread_id: str, limit: int = 10) -> list[DirectMessage]:
+    async def get_dm_history(
+        self, thread_id: str, limit: int = 10
+    ) -> list[DirectMessage]:
         """Fetch message history for a specific DM thread."""
         ...
 
@@ -161,7 +164,9 @@ class BasePlatformAdapter(ABC):
     # Concrete helpers available to all adapters
     # -----------------------------------------------------------------------
 
-    async def _apply_human_delay(self, action_type: str, multiplier: float = 1.0) -> None:
+    async def _apply_human_delay(
+        self, action_type: str, multiplier: float = 1.0
+    ) -> None:
         from socialmind.stealth.timing import TimingEngine
 
         await TimingEngine.delay(action_type, multiplier)

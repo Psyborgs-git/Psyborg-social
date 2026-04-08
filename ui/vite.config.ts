@@ -10,10 +10,14 @@ export default defineConfig({
     },
   },
   server: {
+    host: "0.0.0.0",
+    allowedHosts: [
+      "jae.local"
+    ],
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': 'http://jae.local:8000',
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: 'ws://jae.local:8000',
         ws: true,
       },
     },

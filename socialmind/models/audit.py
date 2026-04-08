@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, JSON, String
+from sqlalchemy import JSON, DateTime, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from socialmind.models.base import Base, uuid_pk
@@ -13,7 +13,7 @@ class AuditLog(Base):
 
     id: Mapped[str] = uuid_pk()
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()"
+        DateTime(timezone=True), server_default=text("now()")
     )
     event: Mapped[str] = mapped_column(String(128), nullable=False)
     actor_id: Mapped[str | None] = mapped_column(String(256))

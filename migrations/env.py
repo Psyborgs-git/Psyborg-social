@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -20,6 +21,10 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if database_url:
+        return database_url
+
     from socialmind.config.settings import settings
 
     return settings.DATABASE_URL

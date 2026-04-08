@@ -1,17 +1,17 @@
-FROM node:20-alpine AS builder
+FROM oven/bun:1.3.11-alpine AS builder
 
 WORKDIR /app
 
-COPY ui/package*.json ./
-RUN npm ci --ignore-scripts 2>/dev/null || true
+COPY ui/package.json ui/bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY ui/ .
-RUN npm run build 2>/dev/null || mkdir -p dist && echo '<html><body>SocialMind UI</body></html>' > dist/index.html
+RUN bun run build
 
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/ui.nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

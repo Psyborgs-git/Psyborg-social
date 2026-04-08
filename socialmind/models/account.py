@@ -52,19 +52,29 @@ class Account(Base, TimestampMixin):
 
     # Relationships
     platform: Mapped["Platform"] = relationship(back_populates="accounts")  # noqa: F821
-    persona: Mapped["Persona | None"] = relationship(back_populates="accounts")  # noqa: F821
-    proxy: Mapped["Proxy | None"] = relationship(back_populates="accounts")  # noqa: F821
-    sessions: Mapped[list["AccountSession"]] = relationship(back_populates="account")  # noqa: F821
-    tasks: Mapped[list["Task"]] = relationship(back_populates="account")  # noqa: F821
+    persona: Mapped["Persona | None"] = relationship(
+        back_populates="accounts"
+    )  # noqa: F821
+    proxy: Mapped["Proxy | None"] = relationship(
+        back_populates="accounts"
+    )  # noqa: F821
+    sessions: Mapped[list["AccountSession"]] = relationship(  # noqa: F821
+        back_populates="account", cascade="all, delete"
+    )
+    tasks: Mapped[list["Task"]] = relationship(  # noqa: F821
+        back_populates="account", cascade="all, delete"
+    )
 
     def set_credentials(self, credentials: dict) -> None:
         """Encrypt and store credentials."""
         from socialmind.security.encryption import get_vault
+
         self.credentials_encrypted = get_vault().encrypt(credentials)
 
     def decrypt_credentials(self) -> dict:
         """Decrypt credentials."""
         from socialmind.security.encryption import get_vault
+
         return get_vault().decrypt(self.credentials_encrypted)
 
 
@@ -96,6 +106,7 @@ class AccountSession(Base, TimestampMixin):
     def api_tokens(self) -> dict | None:
         if self.api_tokens_encrypted:
             from socialmind.security.encryption import get_vault
+
             return get_vault().decrypt(self.api_tokens_encrypted)
         return None
 
@@ -105,6 +116,7 @@ class AccountSession(Base, TimestampMixin):
             self.api_tokens_encrypted = None
         else:
             from socialmind.security.encryption import get_vault
+
             self.api_tokens_encrypted = get_vault().encrypt(value)
 
     @property

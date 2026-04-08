@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from passlib.context import CryptContext
+import bcrypt
 
 from socialmind.api.dependencies import get_db, get_current_user
 from socialmind.models.user import User
@@ -19,8 +19,6 @@ from socialmind.security.auth import (
 )
 
 router = APIRouter()
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class RefreshRequest(BaseModel):
@@ -35,7 +33,17 @@ async def login(
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalar_one_or_none()
 
-    if user is None or not _pwd_context.verify(form_data.password, user.hashed_password):
+    # Verify password using bcrypt directly
+    pwd_match = False
+    if user is not None:
+        try:
+            pwd_match = bcrypt.checkpw(
+                form_data.password.encode("utf-8"), user.hashed_password.encode("utf-8")
+            )
+        except Exception:
+            pwd_match = False
+
+    if user is None or not pwd_match:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     if not user.is_active:

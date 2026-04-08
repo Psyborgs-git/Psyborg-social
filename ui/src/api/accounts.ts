@@ -3,10 +3,10 @@ import { Account } from '../types/api';
 
 export const accountsApi = {
   list: (params?: { platform?: string; status?: string }) =>
-    apiClient.get<Account[]>('/api/v1/accounts', { params }).then(r => r.data),
+    apiClient.get<Account[]>('/api/v1/accounts/', { params }).then(r => r.data),
   get: (id: string) => apiClient.get<Account>(`/api/v1/accounts/${id}`).then(r => r.data),
-  create: (data: Partial<Account> & { credentials?: Record<string, string> }) =>
-    apiClient.post<Account>('/api/v1/accounts', data).then(r => r.data),
+  create: (data: { platform: string; username: string; password: string; proxy_url?: string }) =>
+    apiClient.post<Account>('/api/v1/accounts/', data).then(r => r.data),
   update: (id: string, data: Partial<Account>) =>
     apiClient.patch<Account>(`/api/v1/accounts/${id}`, data).then(r => r.data),
   delete: (id: string) => apiClient.delete(`/api/v1/accounts/${id}`),

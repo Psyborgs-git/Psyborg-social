@@ -1,10 +1,25 @@
 import { create } from 'zustand';
-import { User } from '../types/api';
-import { apiClient } from '../api/client';
+import {
+  apiClient,
+  clearStoredAuth,
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  persistAccessToken,
+  persistRefreshToken,
+} from '../api/client';
+
+const initialToken = getStoredAccessToken();
+const initialRefreshToken = getStoredRefreshToken();
+const initialUsername = typeof window !== 'undefined' ? window.localStorage.getItem('username') : null;
+
+if (initialToken) {
+  apiClient.defaults.headers.common.Authorization = `Bearer ${initialToken}`;
+}
 
 interface AuthStore {
   token: string | null;
-  user: User | null;
+  refreshToken: string | null;
+  user: { id?: string; username?: string } | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -12,17 +27,51 @@ interface AuthStore {
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
-  token: null,
-  user: null,
-  isAuthenticated: false,
+  token: initialToken,
+  refreshToken: initialRefreshToken,
+  user: initialUsername ? { username: initialUsername } : null,
+  isAuthenticated: !!initialToken,
   login: async (username, password) => {
-    const resp = await apiClient.post('/api/v1/auth/token', { username, password });
-    set({ token: resp.data.access_token, user: resp.data.user, isAuthenticated: true });
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${resp.data.access_token}`;
+    const params = new URLSearchParams();
+    params.append('username', username);
+    params.append('password', password);
+
+    const resp = await apiClient.post('/api/v1/auth/token', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    const token = resp.data.access_token as string;
+    const refreshToken = (resp.data.refresh_token as string | undefined) ?? null;
+
+    persistAccessToken(token);
+    persistRefreshToken(refreshToken);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('username', username);
+    }
+
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    set({ token, refreshToken, user: { username }, isAuthenticated: true });
   },
   logout: () => {
     delete apiClient.defaults.headers.common['Authorization'];
-    set({ token: null, user: null, isAuthenticated: false });
+    clearStoredAuth();
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('username');
+    }
+    set({ token: null, refreshToken: null, user: null, isAuthenticated: false });
   },
-  setToken: (token) => set({ token, isAuthenticated: !!token }),
+  setToken: (token) => {
+    persistAccessToken(token);
+    if (token) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete apiClient.defaults.headers.common['Authorization'];
+    }
+
+    set((state) => ({
+      token,
+      isAuthenticated: !!token,
+      user: token ? state.user : null,
+    }));
+  },
 }));

@@ -4,8 +4,14 @@ import LoginPage from './routes/login';
 import DashboardPage from './routes/index';
 import AccountsPage from './routes/accounts/index';
 import NewAccountPage from './routes/accounts/new';
+import AccountDetailPage from './routes/accounts/$accountId';
 import CampaignsPage from './routes/campaigns/index';
 import NewCampaignPage from './routes/campaigns/new';
+import CampaignDetailPage from './routes/campaigns/$campaignId';
+import PersonasPage from './routes/personas/index';
+import PersonaDetailPage from './routes/personas/$personaId';
+import MediaPage from './routes/media/index';
+import SettingsPage from './routes/settings';
 import TasksPage from './routes/tasks/index';
 import AnalyticsPage from './routes/analytics/index';
 
@@ -41,6 +47,12 @@ const newAccountRoute = createRoute({
   component: NewAccountPage,
 });
 
+const accountDetailRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/accounts/$accountId',
+  component: AccountDetailPage,
+});
+
 const campaignsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/campaigns',
@@ -51,6 +63,36 @@ const newCampaignRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/campaigns/new',
   component: NewCampaignPage,
+});
+
+const campaignDetailRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/campaigns/$campaignId',
+  component: CampaignDetailPage,
+});
+
+const personasRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/personas',
+  component: PersonasPage,
+});
+
+const personaDetailRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/personas/$personaId',
+  component: PersonaDetailPage,
+});
+
+const mediaRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/media',
+  component: MediaPage,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/settings',
+  component: SettingsPage,
 });
 
 const tasksRoute = createRoute({
@@ -71,8 +113,14 @@ export const routeTree = rootRoute.addChildren([
     dashboardRoute,
     accountsRoute,
     newAccountRoute,
+    accountDetailRoute,
     campaignsRoute,
     newCampaignRoute,
+    campaignDetailRoute,
+    personasRoute,
+    personaDetailRoute,
+    mediaRoute,
+    settingsRoute,
     tasksRoute,
     analyticsRoute,
   ]),

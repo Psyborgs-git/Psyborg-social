@@ -1,6 +1,6 @@
 # Platform Adapters
 
-Design and implementation guide for all 7 platform adapters. Each adapter uses a dual-strategy approach: private API client (fast, lightweight) with a Playwright browser fallback (robust, full-featured).
+Design and implementation guide for all 8 platform adapters. Each adapter uses a dual-strategy approach: private API client (fast, lightweight) with a Playwright browser fallback (robust, full-featured). LinkedIn currently follows the browser-first path because the official API is too limited for normal end-user automation.
 
 ---
 
@@ -608,6 +608,7 @@ from socialmind.adapters.youtube.adapter import YouTubeAdapter
 from socialmind.adapters.facebook.adapter import FacebookAdapter
 from socialmind.adapters.twitter.adapter import TwitterAdapter
 from socialmind.adapters.threads.adapter import ThreadsAdapter
+from socialmind.adapters.linkedin.adapter import LinkedInAdapter
 
 ADAPTER_REGISTRY: dict[str, type[BasePlatformAdapter]] = {
     "instagram": InstagramAdapter,
@@ -617,9 +618,10 @@ ADAPTER_REGISTRY: dict[str, type[BasePlatformAdapter]] = {
     "facebook": FacebookAdapter,
     "twitter": TwitterAdapter,
     "threads": ThreadsAdapter,
+    "linkedin": LinkedInAdapter,
 }
 
-def get_adapter(account: Account, session: AccountSession, proxy: Proxy | None) -> BasePlatformAdapter:
+def get_adapter(account: Account, session: AccountSession | None, proxy: Proxy | None) -> BasePlatformAdapter:
     AdapterClass = ADAPTER_REGISTRY[account.platform.slug]
     return AdapterClass(account=account, session=session, proxy=proxy)
 ```

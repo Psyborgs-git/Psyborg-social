@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 from socialmind.stealth.fingerprint import FingerprintProfile, apply_stealth
 
+from socialmind.session import RedisSessionManager
+
 if TYPE_CHECKING:
     from playwright.async_api import Browser, BrowserContext
 
@@ -21,7 +23,12 @@ async def get_shared_browser() -> "Browser":
     global _browser
     async with _browser_lock:
         if _browser is None or not _browser.is_connected():
-            from playwright.async_api import async_playwright
+            try:
+                from playwright.async_api import async_playwright
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Playwright is not installed. Install the 'browser' extra to enable browser-backed adapters."
+                ) from exc
 
             playwright = await async_playwright().start()
             _browser = await playwright.chromium.launch(
@@ -39,6 +46,8 @@ async def get_shared_browser() -> "Browser":
 class BrowserContextFactory:
     """Manages per-account isolated browser contexts with stealth patching."""
 
+    _session_manager = RedisSessionManager()
+
     @staticmethod
     async def get_or_create(
         account: "Account",
@@ -50,6 +59,8 @@ class BrowserContextFactory:
         existing = _context_cache.get(account_id)
         if existing is not None and not existing.is_closed():
             return existing
+
+        await BrowserContextFactory._session_manager.hydrate_account(account)
 
         fingerprint = FingerprintProfile.generate(account_id)
         browser = await get_shared_browser()
@@ -74,9 +85,9 @@ class BrowserContextFactory:
             locale="en-US",
             timezone_id=fingerprint["timezone"],
             proxy=proxy_config,
-            storage_state=account.sessions[0].browser_storage_state
-            if account.sessions
-            else None,
+            storage_state=(
+                account.sessions[0].browser_storage_state if account.sessions else None
+            ),
         )
 
         ctx.on(
@@ -96,6 +107,9 @@ class BrowserContextFactory:
             session = account.sessions[0]
             session.cookies = state.get("cookies", [])
             session.local_storage = state.get("origins", [])
+            await BrowserContextFactory._session_manager.persist_account_session(
+                account
+            )
 
     @staticmethod
     async def close(account_id: str) -> None:

@@ -1,0 +1,86 @@
+Metadata-Version: 2.4
+Name: socialmind
+Version: 0.1.0
+Summary: Autonomous social media management platform powered by AI
+Author: SocialMind Team
+Requires-Python: <4.0,>=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: dspy-ai<3.0,>=2.0
+Requires-Dist: litellm<2.0,>=1.0
+Requires-Dist: openai<2.0,>=1.0
+Requires-Dist: anthropic<0.26,>=0.25
+Requires-Dist: ollama<0.3,>=0.2
+Requires-Dist: httpx<0.28,>=0.27
+Requires-Dist: curl-cffi<0.8,>=0.7
+Requires-Dist: fastapi<0.112,>=0.111
+Requires-Dist: uvicorn[standard]<0.30,>=0.29
+Requires-Dist: pydantic<3.0,>=2.7
+Requires-Dist: pydantic-settings<3.0,>=2.2
+Requires-Dist: python-multipart<0.0.10,>=0.0.9
+Requires-Dist: python-jose[cryptography]<4.0,>=3.3
+Requires-Dist: passlib[bcrypt]<2.0,>=1.7
+Requires-Dist: cryptography<43.0,>=42.0
+Requires-Dist: sqlalchemy[asyncio]<3.0,>=2.0
+Requires-Dist: alembic<2.0,>=1.13
+Requires-Dist: asyncpg<0.30,>=0.29
+Requires-Dist: redis[hiredis]<6.0,>=5.0
+Requires-Dist: celery[redis]<6.0,>=5.4
+Requires-Dist: flower<3.0,>=2.0
+Requires-Dist: mcp<2.0,>=1.0
+Requires-Dist: sse-starlette<3.0,>=2.0
+Requires-Dist: Pillow<11.0,>=10.0
+Requires-Dist: loguru<0.8,>=0.7
+Requires-Dist: typer<0.13,>=0.12
+Requires-Dist: rich<14.0,>=13.0
+Requires-Dist: python-dotenv<2.0,>=1.0
+Requires-Dist: pyotp<3.0,>=2.9
+Requires-Dist: beautifulsoup4<5.0,>=4.12
+Requires-Dist: trafilatura<2.0,>=1.9
+Provides-Extra: dev
+Requires-Dist: ruff<0.5,>=0.4; extra == "dev"
+Requires-Dist: mypy<2.0,>=1.10; extra == "dev"
+Requires-Dist: pytest<9.0,>=8.0; extra == "dev"
+Requires-Dist: pytest-asyncio<0.24,>=0.23; extra == "dev"
+Requires-Dist: pytest-playwright<0.6,>=0.5; extra == "dev"
+Requires-Dist: factory-boy<4.0,>=3.3; extra == "dev"
+Requires-Dist: pre-commit<4.0,>=3.7; extra == "dev"
+Provides-Extra: browser
+Requires-Dist: playwright<2.0,>=1.44; extra == "browser"
+Requires-Dist: playwright-stealth<2.0,>=1.0; extra == "browser"
+Requires-Dist: fake-useragent<2.0,>=1.5; extra == "browser"
+Requires-Dist: python-socks<3.0,>=2.0; extra == "browser"
+Requires-Dist: aiohttp-socks<0.9,>=0.8; extra == "browser"
+Provides-Extra: media
+Requires-Dist: ffmpeg-python<0.3,>=0.2; extra == "media"
+Requires-Dist: moviepy<2.0,>=1.0; extra == "media"
+Provides-Extra: social-instagram
+Requires-Dist: instagrapi<3.0,>=2.0; extra == "social-instagram"
+Provides-Extra: social-reddit
+Requires-Dist: praw<8.0,>=7.0; extra == "social-reddit"
+Requires-Dist: asyncpraw<8.0,>=7.0; extra == "social-reddit"
+Provides-Extra: social-twitter
+Requires-Dist: tweepy<5.0,>=4.0; extra == "social-twitter"
+Provides-Extra: social-youtube
+Requires-Dist: yt-dlp; extra == "social-youtube"
+Requires-Dist: google-api-python-client<3.0,>=2.0; extra == "social-youtube"
+Requires-Dist: google-auth-oauthlib<2.0,>=1.0; extra == "social-youtube"
+Requires-Dist: google-auth-httplib2<0.3,>=0.2; extra == "social-youtube"
+
+# SocialMind
+
+Autonomous social media management platform powered by AI.
+
+## Development
+
+Use `uv` to install dependencies and run the app locally:
+
+- `uv sync --extra dev`
+- `uv sync --extra browser --extra media --extra social-instagram --extra social-reddit --extra social-twitter --extra social-youtube`
+- `uv run uvicorn socialmind.api.main:app --reload`
+
+## Docker
+
+Build and run the API stack with Docker Compose using `docker-compose.yml` or `docker-compose.dev.yml`.
+
+- `UV_EXTRAS=browser,media,social-instagram,social-reddit,social-twitter,social-youtube`
+- `INSTALL_PLAYWRIGHT=true`

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Table, Text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Table, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from socialmind.models.base import Base, TimestampMixin, uuid_pk
@@ -71,9 +71,10 @@ class Task(Base, TimestampMixin):
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     celery_task_id: Mapped[str | None] = mapped_column(String(256))
 
-    account: Mapped["Account"] = relationship(back_populates="tasks")  # noqa: F821
-    logs: Mapped[list["TaskLog"]] = relationship(back_populates="task")
-    media: Mapped[list["MediaAsset"]] = relationship(secondary=task_media)  # noqa: F821
+    account: Mapped[Account] = relationship(back_populates="tasks")  # noqa: F821
+    campaign: Mapped[Campaign | None] = relationship(back_populates="tasks")
+    logs: Mapped[list[TaskLog]] = relationship(back_populates="task")
+    media: Mapped[list[MediaAsset]] = relationship(secondary=task_media)  # noqa: F821
 
 
 class TaskLog(Base):
@@ -82,13 +83,13 @@ class TaskLog(Base):
     id: Mapped[str] = uuid_pk()
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id"), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()"
+        DateTime(timezone=True), server_default=text("now()")
     )
     level: Mapped[str] = mapped_column(String(16))
     message: Mapped[str] = mapped_column(Text)
     log_metadata: Mapped[dict] = mapped_column(JSON, default=dict, name="metadata")
 
-    task: Mapped["Task"] = relationship(back_populates="logs")
+    task: Mapped[Task] = relationship(back_populates="logs")
 
 
 class Campaign(Base, TimestampMixin):
@@ -104,5 +105,5 @@ class Campaign(Base, TimestampMixin):
     # Cron schedule for auto-generating tasks
     cron_expression: Mapped[str | None] = mapped_column(String(128))
 
-    accounts: Mapped[list["Account"]] = relationship(secondary=campaign_accounts)  # noqa: F821
-    tasks: Mapped[list["Task"]] = relationship(back_populates="campaign")
+    accounts: Mapped[list[Account]] = relationship(secondary=campaign_accounts)  # noqa: F821
+    tasks: Mapped[list[Task]] = relationship(back_populates="campaign")

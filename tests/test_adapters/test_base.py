@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 import pytest
-from socialmind.adapters.registry import ADAPTER_REGISTRY, get_adapter
+
 from socialmind.adapters.base import BasePlatformAdapter, PostContent, PostResult
+from socialmind.adapters.registry import ADAPTER_REGISTRY, get_adapter
 
 
 def test_adapter_registry_has_all_platforms():
-    expected = {"instagram", "tiktok", "reddit", "youtube", "facebook", "twitter", "threads"}
+    expected = {
+        "instagram",
+        "tiktok",
+        "reddit",
+        "youtube",
+        "facebook",
+        "twitter",
+        "threads",
+        "linkedin",
+    }
     assert set(ADAPTER_REGISTRY.keys()) == expected
 
 

@@ -54,22 +54,30 @@ class AccountService:
             credentials_encrypted=encrypted_creds,
             status=AccountStatus.ACTIVE,
         )
-        return account
+        from socialmind.models.account import AccountSession
 
-    async def pause(self, account_id: str, reason: str) -> Account:
+        self._session.add(AccountSession(account_id=account.id))
+        await self._session.flush()
+        await self._session.commit()
+        return await self.get_account(account.id)
+
+    async def pause(self, account_id: str, reason: str | None) -> Account:
         account = await self._repo.update_status(account_id, AccountStatus.PAUSED)
         await self._repo.update(account_id, suspension_reason=reason)
         await self._revoke_pending_tasks(account_id)
-        return account
+        await self._session.commit()
+        return await self.get_account(account.id)
 
     async def resume(self, account_id: str) -> Account:
         account = await self._repo.update_status(account_id, AccountStatus.ACTIVE)
         await self._repo.update(account_id, suspension_reason=None)
-        return account
+        await self._session.commit()
+        return await self.get_account(account.id)
 
     async def delete(self, account_id: str) -> None:
         await self._revoke_pending_tasks(account_id)
         await self._repo.delete(account_id)
+        await self._session.commit()
 
     async def get_rate_limit_usage(self, account_id: str) -> dict:
         from datetime import UTC, datetime
@@ -116,4 +124,3 @@ class AccountService:
                 AsyncResult(task.celery_task_id).revoke(terminate=False)
             task.status = TaskStatus.SKIPPED
         await self._session.flush()
-

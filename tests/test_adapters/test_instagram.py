@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from socialmind.adapters.instagram.adapter import InstagramAdapter
-from socialmind.adapters.base import PostContent, PostResult
 
 
 class MockAccount:
@@ -15,8 +13,10 @@ class MockAccount:
     def decrypt_credentials(self):
         return {"password": "testpass", "totp_secret": None}
 
-    class platform:
+    class Platform:
         slug = "instagram"
+
+    platform = Platform()
 
 
 class MockSession:
@@ -42,6 +42,15 @@ def test_adapter_instantiation(adapter):
 
 
 def test_adapter_has_required_methods(adapter):
-    assert hasattr(adapter, "post")
-    assert hasattr(adapter, "engage_feed")
-    assert hasattr(adapter, "get_trending")
+    for method_name in (
+        "authenticate",
+        "post",
+        "comment",
+        "reply_dm",
+        "like",
+        "follow",
+        "unfollow",
+        "get_feed",
+        "get_trending",
+    ):
+        assert hasattr(adapter, method_name)

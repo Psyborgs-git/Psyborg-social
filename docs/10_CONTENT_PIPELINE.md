@@ -178,6 +178,9 @@ class ImageProcessor:
             "post":           (1200, 630),
             "story":          (1080, 1920),
         },
+        "linkedin": {
+            "post":           (1200, 627),
+        },
     }
 
     @staticmethod

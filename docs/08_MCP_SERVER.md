@@ -6,13 +6,14 @@ SocialMind exposes all automation capabilities as MCP (Model Context Protocol) t
 
 ## Overview
 
-The MCP server runs on port 8001 and is implemented using Anthropic's official Python MCP SDK. It is mounted as a Starlette sub-application inside FastAPI, using HTTP + Server-Sent Events (SSE) as the transport.
+The MCP server runs on port 8001 and is implemented using Anthropic's official Python MCP SDK. It is mounted as a Starlette sub-application inside FastAPI and exposes a Streamable HTTP endpoint at `/mcp`, while also keeping the legacy SSE endpoints at `/mcp/sse` and `/mcp/messages` for backwards compatibility. It also exposes an unauthenticated `/health` endpoint so Docker and local smoke tests can verify the server before attempting tool calls.
 
 ```
 AI Agent (Claude Desktop / custom agent)
     │
-    │  HTTP POST /mcp  (tool calls)
-    │  GET  /mcp/sse   (SSE stream for responses)
+    │  POST /mcp       (Streamable HTTP)
+    │  GET  /mcp       (server stream / resumability)
+    │  GET  /mcp/sse   (legacy SSE)
     ▼
 MCP Server (port 8001)
     │
@@ -32,10 +33,13 @@ SocialMindService (business logic layer)
 ```python
 # socialmind/mcp/server.py
 from mcp.server import Server
+from contextlib import asynccontextmanager
+
 from mcp.server.sse import SseServerTransport
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.types import Tool, TextContent, ImageContent
 from starlette.applications import Starlette
-from starlette.routing import Route, Mount
+from starlette.routing import Mount, Route
 import mcp.types as types
 
 # Initialize MCP server
@@ -65,21 +69,28 @@ for tool_group in [
     tool_group.register(app)
 
 
-# Create SSE transport and mount as Starlette app
+# Create Streamable HTTP + legacy SSE transport and mount as Starlette app
 def create_mcp_app() -> Starlette:
-    sse = SseServerTransport("/mcp/messages")
+    sse = SseServerTransport("/messages")
+    session_manager = StreamableHTTPSessionManager(app)
+
+    @asynccontextmanager
+    async def lifespan(app: Starlette):
+        async with session_manager.run():
+            yield
 
     async def handle_sse(request):
         async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
             await app.run(streams[0], streams[1], app.create_initialization_options())
 
-    async def handle_messages(request):
-        await sse.handle_post_message(request.scope, request.receive, request._send)
-
-    return Starlette(routes=[
-        Route("/sse", endpoint=handle_sse),
-        Route("/messages", endpoint=handle_messages, methods=["POST"]),
-    ])
+    return Starlette(
+        lifespan=lifespan,
+        routes=[
+            Route("/sse", endpoint=handle_sse, methods=["GET"]),
+            Mount("/messages", app=sse.handle_post_message),
+            Mount("/", app=session_manager.handle_request),
+        ],
+    )
 ```
 
 ---
@@ -102,8 +113,8 @@ async def list_account_tools():
                 "properties": {
                     "platform": {
                         "type": "string",
-                        "description": "Filter by platform (instagram, tiktok, reddit, youtube, facebook, twitter, threads). Omit for all.",
-                        "enum": ["instagram", "tiktok", "reddit", "youtube", "facebook", "twitter", "threads"],
+                        "description": "Filter by platform (instagram, tiktok, reddit, youtube, facebook, twitter, threads, linkedin). Omit for all.",
+                        "enum": ["instagram", "tiktok", "reddit", "youtube", "facebook", "twitter", "threads", "linkedin"],
                     },
                     "status": {
                         "type": "string",
@@ -522,26 +533,25 @@ Add to your `claude_desktop_config.json`:
 
 ```json
 {
-  "mcpServers": {
-    "socialmind": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/client-sse",
-        "http://localhost:8001/mcp/sse"
-      ]
+    "servers": {
+        "socialmind": {
+            "type": "http",
+            "url": "http://localhost:8001/mcp",
+            "headers": {
+                "Authorization": "Bearer dev-mcp-key"
+            }
+        }
     }
-  }
 }
 ```
 
-Or if running remotely, replace `localhost:8001` with your server's address.
+If your client only supports legacy SSE, point it to `http://localhost:8001/mcp/sse` instead.
 
 ---
 
 ## Security
 
-The MCP server requires an API key by default. Set `MCP_API_KEY` in your `.env` file. The key is validated via a middleware that checks the `Authorization: Bearer <key>` header on every request.
+The MCP server requires an API key by default. Set `MCP_API_KEY` in your `.env` file. The key is validated via a middleware that checks the `Authorization: Bearer <key>` header on every request except `/health`, which stays open for container probes and smoke tests.
 
 For local-only use, set `MCP_REQUIRE_AUTH=false` in development.
 

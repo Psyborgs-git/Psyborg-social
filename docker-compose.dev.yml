@@ -1,25 +1,72 @@
-version: "3.9"
-
 services:
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly no
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      args:
+        UV_EXTRAS: ${UV_EXTRAS:-}
+        INSTALL_PLAYWRIGHT: ${INSTALL_PLAYWRIGHT:-false}
     command: uvicorn socialmind.api.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
     volumes:
       - ./socialmind:/app/socialmind
       - ./alembic.ini:/app/alembic.ini
       - ./migrations:/app/migrations
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-socialmind}:${POSTGRES_PASSWORD:-socialmind}@${DATABASE_HOST:-host.docker.internal}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-socialmind}
+      REDIS_URL: redis://redis:6379/0
       DEBUG: "true"
       LOG_LEVEL: DEBUG
 
   mcp:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      args:
+        UV_EXTRAS: ${UV_EXTRAS:-}
+        INSTALL_PLAYWRIGHT: ${INSTALL_PLAYWRIGHT:-false}
     command: uvicorn socialmind.mcp.app:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "${MCP_HOST_PORT:-8001}:8001"
     volumes:
       - ./socialmind:/app/socialmind
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-socialmind}:${POSTGRES_PASSWORD:-socialmind}@${DATABASE_HOST:-host.docker.internal}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-socialmind}
+      REDIS_URL: redis://redis:6379/0
       DEBUG: "true"
       MCP_REQUIRE_AUTH: "false"
 
   worker:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      args:
+        UV_EXTRAS: ${UV_EXTRAS:-}
+        INSTALL_PLAYWRIGHT: ${INSTALL_PLAYWRIGHT:-false}
     command: >
       celery -A socialmind.scheduler.celery_app worker
       --loglevel=debug
@@ -27,5 +74,15 @@ services:
       --queues=high,normal,low
     volumes:
       - ./socialmind:/app/socialmind
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-socialmind}:${POSTGRES_PASSWORD:-socialmind}@${DATABASE_HOST:-host.docker.internal}:${DATABASE_PORT:-5432}/${DATABASE_NAME:-socialmind}
+      REDIS_URL: redis://redis:6379/0
       DEBUG: "true"
+
+volumes:
+  redis_data:

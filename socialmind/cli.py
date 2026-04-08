@@ -9,7 +9,9 @@ console = Console()
 
 @app.command()
 def generate_key(
-    key_type: str = typer.Argument("encryption", help="Key type: encryption | secret | mcp"),
+    key_type: str = typer.Argument(
+        "encryption", help="Key type: encryption | secret | mcp"
+    ),
 ) -> None:
     """Generate a cryptographic key suitable for the given purpose."""
     import secrets
@@ -76,26 +78,37 @@ def rotate_keys() -> None:
 @app.command()
 def create_superuser(
     username: str = typer.Argument(..., help="Dashboard admin username"),
-    password: str = typer.Option(..., prompt=True, hide_input=True),
+    password: str | None = typer.Option(
+        None, "--password", "-p", help="Password (prompted if not provided)"
+    ),
 ) -> None:
     """Create a superuser account for the web dashboard."""
     import asyncio
 
     async def _create() -> None:
-        from passlib.context import CryptContext
+        import getpass
+        import bcrypt
+        import uuid
         from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
         from socialmind.config.settings import settings
         from socialmind.models.user import User
 
-        pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
         engine = create_async_engine(settings.DATABASE_URL)
         session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+        # Prompt for password if not provided
+        pwd = password if password else getpass.getpass("Password: ")
+
+        # Hash password using bcrypt
+        hashed_password = bcrypt.hashpw(
+            pwd.encode("utf-8"), bcrypt.gensalt(rounds=12)
+        ).decode("utf-8")
 
         async with session_factory() as db:
             user = User(
                 username=username,
-                hashed_password=pwd_ctx.hash(password),
+                hashed_password=hashed_password,
                 is_admin=True,
             )
             db.add(user)

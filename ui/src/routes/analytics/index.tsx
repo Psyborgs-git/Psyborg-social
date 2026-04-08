@@ -24,31 +24,31 @@ export default function AnalyticsPage() {
   const platformData = Array.isArray(platforms) ? platforms : [];
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-      <div className="grid grid-cols-3 gap-4">
+    <div className="p-4 sm:p-6 space-y-6">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Analytics</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card><CardContent className="py-4 text-center">
-          <p className="text-3xl font-bold text-gray-900">{summary?.success_rate?.toFixed(1) ?? '—'}%</p>
-          <p className="text-sm text-gray-500 mt-1">Success Rate</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary?.success_rate?.toFixed(1) ?? '—'}%</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">Success Rate</p>
         </CardContent></Card>
         <Card><CardContent className="py-4 text-center">
-          <p className="text-3xl font-bold text-gray-900">{summary?.total_tasks ?? '—'}</p>
-          <p className="text-sm text-gray-500 mt-1">Total Tasks</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary?.total_tasks ?? '—'}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">Total Tasks</p>
         </CardContent></Card>
         <Card><CardContent className="py-4 text-center">
-          <p className="text-3xl font-bold text-gray-900">{summary?.posts_today ?? '—'}</p>
-          <p className="text-sm text-gray-500 mt-1">Posts Today</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary?.posts_today ?? '—'}</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">Posts Today</p>
         </CardContent></Card>
       </div>
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle>Engagement (7d)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base sm:text-lg">Engagement (7d)</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={engagementData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Bar dataKey="value" fill="#3b82f6" />
               </BarChart>
@@ -56,17 +56,17 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Platform Breakdown</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base sm:text-lg">Platform Breakdown</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={platformData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
+                <Pie data={platformData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60}>
                   {platformData.map((_: unknown, index: number) => (
                     <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>

@@ -1,12 +1,12 @@
 # SocialMind — AI-Powered Social Media Automation Platform
 
-> A self-hosted, Docker-deployable system for automating social media activity across Instagram, TikTok, Reddit, YouTube, Facebook, X (Twitter), and Threads — powered by DSPy AI pipelines, full stealth infrastructure, and an MCP server for agent-first access.
+> A self-hosted, Docker-deployable system for automating social media activity across Instagram, TikTok, Reddit, YouTube, Facebook, X (Twitter), Threads, and LinkedIn — powered by DSPy AI pipelines, full stealth infrastructure, and an MCP server for agent-first access.
 
 ---
 
 ## What This Is
 
-SocialMind is a **team-scale automation library and platform** designed to manage 10–100 social media accounts across 7 platforms. It behaves like a human — composing posts, replying to DMs, commenting, researching trends, scheduling content — using AI pipelines built on DSPy, with support for local models (Ollama) and any LLM provider DSPy supports.
+SocialMind is a **team-scale automation library and platform** designed to manage 10–100 social media accounts across 8 platforms. It behaves like a human — composing posts, replying to DMs, commenting, researching trends, scheduling content — using AI pipelines built on DSPy, with support for local models (Ollama) and any LLM provider DSPy supports.
 
 It is **not** a tool that relies on approved developer APIs (most platforms won't approve this use case). Instead, it uses a dual-layer approach:
 
@@ -19,7 +19,7 @@ It is **not** a tool that relies on approved developer APIs (most platforms won'
 
 | Capability | Description |
 |---|---|
-| **Multi-account management** | Connect and manage 10–100 accounts across 7 platforms |
+| **Multi-account management** | Connect and manage 10–100 accounts across 8 platforms |
 | **AI content generation** | DSPy pipelines generate posts, replies, comments, DMs |
 | **Multimedia support** | Text, images (AI-generated or uploaded), video, reels, stories |
 | **Autonomous engagement** | Like, comment, follow, DM, reply — all with human-like timing |
@@ -52,25 +52,28 @@ cp .env.example .env
 ### 2. Start the stack
 
 ```bash
-docker-compose up -d
+docker compose up -d --build
 ```
+
+The default Compose setup connects the containers to a PostgreSQL cluster running on the host machine at `localhost:5432`. If you prefer a containerized database, start the optional profile with `docker compose --profile docker-db up -d postgres`.
 
 This starts:
 - `api` — FastAPI backend (port 8000)
 - `worker` — Celery task worker
 - `beat` — Celery scheduler
 - `redis` — Message broker + cache
-- `postgres` — Primary database
+- host PostgreSQL cluster — Primary database (default)
+- `postgres` — Optional PostgreSQL service behind the `docker-db` profile
 - `ollama` — Local LLM server (port 11434)
 - `mcp` — MCP server (port 8001)
-- `ui` — React dashboard (port 3000)
+- `ui` — Bun-built React dashboard (port 3000)
 - `flower` — Celery monitoring UI (port 5555)
 
 ### 3. Pull your first Ollama model
 
 ```bash
-docker exec -it socialmind-ollama ollama pull llama3.2
-docker exec -it socialmind-ollama ollama pull nomic-embed-text
+docker compose exec ollama ollama pull llama3.2
+docker compose exec ollama ollama pull nomic-embed-text
 ```
 
 ### 4. Add your first account

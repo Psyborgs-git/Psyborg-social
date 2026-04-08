@@ -8,7 +8,7 @@ export interface Account {
   daily_action_limit: number;
   warmup_phase: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export type AccountStatus = 'active' | 'paused' | 'suspended' | 'credential_error' | 'warming_up';
@@ -17,6 +17,15 @@ export interface Platform {
   id: string;
   slug: string;
   display_name: string;
+}
+
+export interface CampaignAccount {
+  id: string;
+  username: string;
+  display_name?: string;
+  platform_id: string;
+  platform?: Platform;
+  status: AccountStatus;
 }
 
 export interface Task {
@@ -50,8 +59,9 @@ export interface Campaign {
   description?: string;
   is_active: boolean;
   cron_expression?: string;
+  accounts?: CampaignAccount[];
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface PostRecord {
@@ -70,6 +80,7 @@ export interface PostRecord {
 
 export interface AnalyticsSummary {
   active_accounts: number;
+  tasks_today: number;
   posts_today: number;
   dms_replied: number;
   tasks_running: number;
